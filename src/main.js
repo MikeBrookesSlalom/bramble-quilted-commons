@@ -27,14 +27,16 @@ const ui = {
     setTimeout(() => { this.hintEl.style.opacity = '0'; }, 7000);
   },
 
-  win(collected, total, earned, totalCurrency) {
+  win({ collected, total, earned, totalCurrency, levelName, hasNextLevel, isFinal }) {
     const name = findCharacter(getSelected()).name;
-    document.getElementById('winline').textContent = `${name} sits at the very top of the Quilted Commons.`;
+    document.getElementById('winline').textContent = `${name} sits at the very top of ${levelName}.`;
     document.getElementById('wincount').textContent =
       collected >= total
         ? `And every single button — all ${total} of them. Perfect stitching!`
         : `You gathered ${collected} of ${total} buttons along the way.`;
     document.getElementById('winearned').textContent = `You earned ${earned} 🧵 spools — ${totalCurrency} saved up.`;
+    document.getElementById('winNextLevelBtn').style.display = hasNextLevel ? '' : 'none';
+    document.getElementById('winResetBtn').style.display = isFinal ? '' : 'none';
     this.winEl.classList.add('show');
     renderCurrencyBadge();
   },
@@ -147,6 +149,18 @@ muteBtn.addEventListener('click', () => {
 
 document.getElementById('keepgoing').addEventListener('click', () => {
   document.getElementById('win').classList.remove('show');
+});
+
+document.getElementById('winNextLevelBtn').addEventListener('click', () => {
+  document.getElementById('win').classList.remove('show');
+  game.loadLevel(2);
+  ui.toast('Level 2 — The Midnight Mending Loft');
+});
+
+document.getElementById('winResetBtn').addEventListener('click', () => {
+  document.getElementById('win').classList.remove('show');
+  game.loadLevel(1);
+  ui.toast('Back to The Quilted Commons — your spools are safe!');
 });
 
 document.getElementById('respawnBtn').addEventListener('click', () => game.respawn());

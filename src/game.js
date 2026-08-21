@@ -3,7 +3,7 @@ import { World } from './level.js';
 import { createBear, animateBear, bearLandSquash } from './bear.js';
 import { findCharacter } from './characters.js';
 import { getSelected, addCurrency } from './progress.js';
-import { skyTexture } from './textures.js';
+import { skyTexture, nightSkyTexture } from './textures.js';
 import { Particles } from './particles.js';
 import { Sound } from './sound.js';
 
@@ -19,6 +19,21 @@ const ACCEL_AIR = 26;
 const FRICTION = 14;
 const PLAYER_R = 0.42;
 const PLAYER_H = 1.55;
+
+// per-level metadata: spawn point, display name, and the spool reward
+// formula for finishing it
+const LEVELS = {
+  1: {
+    name: 'The Quilted Commons',
+    spawn: [0, 0.2, 6],
+    reward: (collected) => 20 + collected * 5,
+  },
+  2: {
+    name: 'The Midnight Mending Loft',
+    spawn: [0, 0.2, 6],
+    reward: (collected) => 60 + collected * 8,
+  },
+};
 
 export class Game {
   constructor(canvas, ui) {
@@ -43,14 +58,9 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 600);
     this.setupLights();
 
-    this.world = new World(this.scene);
-    // only the metalware reflects the sky — the fabrics stay matte
-    for (const key of ['metal', 'gold']) {
-      const m = this.world.mat[key];
-      m.envMap = this.sky;
-      m.envMapIntensity = 0.9;
-      m.needsUpdate = true;
-    }
+    this.levelNumber = 1;
+    this.world = new World(this.scene, this.levelNumber);
+    this.applyWorldEnvMap();
     this.particles = new Particles(this.scene);
     this.sound = new Sound();
 
@@ -108,10 +118,110 @@ export class Game {
     this.scene.add(sun.target);
     this.sun = sun;
 
-    this.scene.add(new THREE.HemisphereLight(0xdff0ff, 0xf3ddc4, 0.95));
+    const hemi = new THREE.HemisphereLight(0xdff0ff, 0xf3ddc4, 0.95);
+    this.scene.add(hemi);
+    this.hemi = hemi;
     const fill = new THREE.DirectionalLight(0xd8ecff, 0.45);
     fill.position.set(-12, 8, -14);
     this.scene.add(fill);
+    this.fill = fill;
+  }
+
+  // only the metalware reflects the sky — the fabrics stay matte
+  applyWorldEnvMap() {
+    for (const key of ['metal', 'gold', 'moonMetal']) {
+      const m = this.world.mat[key];
+      if (!m) continue;
+      m.envMap = this.sky;
+      m.envMapIntensity = 0.9;
+      m.needsUpdate = true;
+    }
+  }
+
+  // day for level 1, moonlit for level 2 — swaps sky, fog and lighting
+  applyLevelTheme(levelNumber) {
+    if (levelNumber === 2) {
+      const sky = nightSkyTexture();
+      this.scene.background = sky;
+      this.sky = sky;
+      this.scene.fog = new THREE.FogExp2(0x1c2044, 0.0026);
+      this.sun.color.set(0xbcd0ff);
+      this.sun.intensity = 1.15;
+      this.hemi.color.set(0x8fa8e0);
+      this.hemi.groundColor.set(0x3a3560);
+      this.hemi.intensity = 0.55;
+      this.fill.color.set(0x6a7fd0);
+      this.fill.intensity = 0.4;
+      this.renderer.toneMappingExposure = 0.92;
+    } else {
+      const sky = skyTexture();
+      this.scene.background = sky;
+      this.sky = sky;
+      this.scene.fog = new THREE.FogExp2(0xe4eef5, 0.0028);
+      this.sun.color.set(0xfff6e8);
+      this.sun.intensity = 2.0;
+      this.hemi.color.set(0xdff0ff);
+      this.hemi.groundColor.set(0xf3ddc4);
+      this.hemi.intensity = 0.95;
+      this.fill.color.set(0xd8ecff);
+      this.fill.intensity = 0.45;
+      this.renderer.toneMappingExposure = 1.06;
+    }
+    this.applyWorldEnvMap();
+  }
+
+  // tear down every mesh in a World so its geometries/materials/textures
+  // don't linger in GPU memory once we swap levels
+  disposeWorld(world) {
+    const seen = new Set();
+    world.group.traverse((node) => {
+      if (node.geometry) node.geometry.dispose();
+      if (node.material) {
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((m) => {
+          if (seen.has(m)) return;
+          seen.add(m);
+          m.map?.dispose();
+          m.bumpMap?.dispose();
+          m.dispose();
+        });
+      }
+    });
+    this.scene.remove(world.group);
+  }
+
+  // swap to a different level in place — used by the win screen's
+  // "Continue to Level 2" / "Start over" choices
+  loadLevel(levelNumber) {
+    this.disposeWorld(this.world);
+    this.levelNumber = levelNumber;
+    this.world = new World(this.scene, levelNumber);
+    this.applyLevelTheme(levelNumber);
+
+    const level = LEVELS[levelNumber];
+    this.pos.set(...level.spawn);
+    this.vel.set(0, 0, 0);
+    this.facing = Math.PI;
+    this.grounded = false;
+    this.groundCol = null;
+    this.coyote = 0;
+    this.jumpBuffer = 0;
+    this.canFlutter = true;
+    this.cutJump = false;
+    this.flutterTimer = 0;
+    this.idleTimer = 0;
+    this.respawnPos = this.pos.clone();
+    this.collected = 0;
+    this.won = false;
+    this.winTime = 0;
+
+    this.yaw = 0;
+    this.pitch = 0.22;
+    this.dist = 8.5;
+    this.camPos.set(this.pos.x, this.pos.y + 4, this.pos.z + 8);
+
+    this.ui.setTotal(this.world.buttons.length);
+    this.ui.setCount(0);
   }
 
   /* ---------------- input ---------------- */
@@ -465,16 +575,29 @@ export class Game {
 
     const goal = this.world.goal;
     goal.group.rotation.y += dt * 0.9;
-    goal.group.position.y = 34.8 + Math.sin(this.time * 1.6) * 0.14;
+    // the goal group always sits 0.6 below its trigger point (set that way
+    // in both levels) — deriving the bob's base from that keeps this
+    // level-agnostic instead of assuming level 1's summit height
+    goal.group.position.y = (goal.pos.y - 0.6) + Math.sin(this.time * 1.6) * 0.14;
     if (!goal.reached && goal.pos.distanceTo(this.pos) < 2.6) {
       goal.reached = true;
       this.won = true;
       this.winTime = this.time;
-      const earned = 20 + this.collected * 5;
+      const level = LEVELS[this.levelNumber];
+      const earned = level.reward(this.collected);
       const totalCurrency = addCurrency(earned);
       this.particles.confetti(goal.pos.clone(), 220);
       this.sound.fanfare();
-      this.ui.win(this.collected, this.world.buttons.length, earned, totalCurrency);
+      this.ui.win({
+        collected: this.collected,
+        total: this.world.buttons.length,
+        earned,
+        totalCurrency,
+        levelNumber: this.levelNumber,
+        levelName: level.name,
+        hasNextLevel: this.levelNumber === 1,
+        isFinal: this.levelNumber >= 2,
+      });
     }
   }
 

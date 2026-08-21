@@ -297,6 +297,46 @@ export function makeTexture(canvas, repeat = 1) {
 
 /* ---------------- soft pastel sky, painted like dyed cloth ---------------- */
 
+export function nightSkyTexture() {
+  const c = makeCanvas(512);
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0.0, '#161a35');
+  g.addColorStop(0.4, '#232a55');
+  g.addColorStop(0.72, '#3c4478');
+  g.addColorStop(1.0, '#5c5a8c');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // a soft moon glow, low in the sky
+  const moon = ctx.createRadialGradient(380, 340, 4, 380, 340, 90);
+  moon.addColorStop(0, 'rgba(255,250,235,0.9)');
+  moon.addColorStop(0.25, 'rgba(255,250,235,0.35)');
+  moon.addColorStop(1, 'rgba(255,250,235,0)');
+  ctx.fillStyle = moon;
+  ctx.fillRect(280, 240, 200, 200);
+  ctx.fillStyle = '#fffaeb';
+  ctx.beginPath();
+  ctx.arc(380, 340, 26, 0, Math.PI * 2);
+  ctx.fill();
+
+  const rand = mulberry32(77);
+  for (let i = 0; i < 340; i++) {
+    const x = rand() * 512, y = rand() * 512 * 0.75;
+    const r = rand() * 1.4 + 0.3;
+    ctx.globalAlpha = 0.35 + rand() * 0.55;
+    ctx.fillStyle = '#fff8e8';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export function skyTexture() {
   const c = makeCanvas(512);
   const ctx = c.getContext('2d');

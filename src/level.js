@@ -11,8 +11,9 @@ import {
 ------------------------------------------------------------------ */
 
 export class World {
-  constructor(scene) {
+  constructor(scene, levelNumber = 1) {
     this.scene = scene;
+    this.levelNumber = levelNumber;
     this.group = new THREE.Group();
     scene.add(this.group);
 
@@ -23,9 +24,45 @@ export class World {
     this.spinners = [];
     this.goal = null;
 
-    this.mat = this.buildMaterials();
     this.geo = {};
-    this.build();
+    if (levelNumber === 2) {
+      this.mat = this.buildMaterialsLevel2();
+      this.buildLevel2();
+    } else {
+      this.mat = this.buildMaterials();
+      this.build();
+    }
+  }
+
+  buildMaterialsLevel2() {
+    return {
+      quilt: fabricMaterial(quiltCanvas({ seed: 91, palette: ['#2c3568', '#3a3f7a', '#4a4a8c', '#28345e', '#39406e', '#242c52', '#4f4a80', '#333a6a'] }), { repeat: 1, bump: 0.25 }),
+      quiltSide: fabricMaterial(weaveCanvas({ color: '#20264a', seed: 88 }), { repeat: 3, bump: 0.3 }),
+      grass: fabricMaterial(feltCanvas({ color: '#3b4a78', seed: 95 }), { repeat: 4, bump: 0.3 }),
+      feltPink: fabricMaterial(feltCanvas({ color: '#c9a8e0', seed: 101 }), { repeat: 2 }),
+      feltMint: fabricMaterial(feltCanvas({ color: '#8fd0c9', seed: 102 }), { repeat: 2 }),
+      feltButter: fabricMaterial(feltCanvas({ color: '#f0cf7a', seed: 103 }), { repeat: 2 }),
+      feltLilac: fabricMaterial(feltCanvas({ color: '#a599e0', seed: 104 }), { repeat: 2 }),
+      feltSky: fabricMaterial(feltCanvas({ color: '#4a5a9e', seed: 105 }), { repeat: 2 }),
+      feltCoral: fabricMaterial(feltCanvas({ color: '#e08fa0', seed: 106 }), { repeat: 2 }),
+      feltCream: fabricMaterial(feltCanvas({ color: '#e8e4f5', seed: 107 }), { repeat: 2 }),
+      feltMoss: fabricMaterial(feltCanvas({ color: '#48563c', seed: 108 }), { repeat: 2 }),
+      linen: fabricMaterial(weaveCanvas({ color: '#3a3f6e', seed: 109 }), { repeat: 2, bump: 0.35 }),
+      denim: fabricMaterial(weaveCanvas({ color: '#324070', seed: 110 }), { repeat: 2, bump: 0.35 }),
+      knitMint: fabricMaterial(knitCanvas({ yarnA: '#e8e4f5', yarnB: '#7fc9c0', blend: 0.5, seed: 111 }), { repeat: 2, bump: 0.5 }),
+      knitPeach: fabricMaterial(knitCanvas({ yarnA: '#f0e6d8', yarnB: '#e0a86a', blend: 0.5, seed: 112 }), { repeat: 2, bump: 0.5 }),
+      knitBlue: fabricMaterial(knitCanvas({ yarnA: '#e8e4f5', yarnB: '#7a8fd8', blend: 0.45, seed: 113 }), { repeat: 2, bump: 0.5 }),
+      threadPink: fabricMaterial(threadCanvas({ color: '#c9a8e0', seed: 114 }), { repeat: 2, bump: 0.4 }),
+      threadMint: fabricMaterial(threadCanvas({ color: '#7fc9c0', seed: 115 }), { repeat: 2, bump: 0.4 }),
+      threadButter: fabricMaterial(threadCanvas({ color: '#e0c070', seed: 116 }), { repeat: 2, bump: 0.4 }),
+      threadLilac: fabricMaterial(threadCanvas({ color: '#8f7fd0', seed: 117 }), { repeat: 2, bump: 0.4 }),
+      wood: new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.85 }),
+      metal: new THREE.MeshStandardMaterial({ color: 0xd8dde8, roughness: 0.25, metalness: 0.5 }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xf0d078, roughness: 0.3, metalness: 0.4, emissive: 0x8a6a1a, emissiveIntensity: 0.5 }),
+      moonMetal: new THREE.MeshStandardMaterial({ color: 0xdfe6f5, roughness: 0.22, metalness: 0.35, emissive: 0x8fa8e0, emissiveIntensity: 0.4 }),
+      stuffing: new THREE.MeshStandardMaterial({ color: 0xe8e4f0, roughness: 1 }),
+      pinkYarn: new THREE.MeshStandardMaterial({ color: 0xc9a8e0, roughness: 0.95 }),
+    };
   }
 
   buildMaterials() {
@@ -681,4 +718,210 @@ export class World {
       });
     }
   }
+  /* ================= level 2: The Midnight Mending Loft ================= */
+
+  buildLevel2() {
+    const M = this.mat;
+
+    /* --- 1. moonlit meadow --- */
+    const island = this.addCyl(0, 0, 4, 8, 3, M.quilt, { seg: 36 });
+    island.mesh.material = [M.quiltSide, M.quilt, M.quiltSide];
+    island.mesh.geometry = new THREE.CylinderGeometry(8, 7.5, 3, 36);
+    const skirt = new THREE.Mesh(new THREE.TorusGeometry(7.9, 0.5, 10, 40), M.grass);
+    skirt.rotation.x = Math.PI / 2;
+    skirt.position.set(0, -0.2, 4);
+    this.group.add(skirt);
+
+    const flowerMats = [M.feltPink, M.feltLilac, M.feltMint];
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 2.5 + Math.random() * 4.5;
+      this.feltFlower(Math.cos(a) * r, 0, 4 + Math.sin(a) * r, 0.55 + Math.random() * 0.5,
+        flowerMats[Math.floor(Math.random() * flowerMats.length)]);
+    }
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 2 + Math.random() * 6;
+      this.grassTuft(Math.cos(a) * r, 0, 4 + Math.sin(a) * r, M.grass);
+    }
+    this.embroideryHoop(-6.2, 5.0, 1.5, 3.6, Math.PI * 0.3);
+
+    this.addCheckpoint(2.2, 0, 3, 'Moonlit Meadow').active = true;
+
+    /* --- 2. lantern steps --- */
+    const lanternDefs = [
+      [1.6, 0.95, -0.6, 0.0],
+      [-1.7, 1.95, -4.9, 1.0],
+      [1.8, 3.0, -9.0, 2.0],
+      [-1.2, 4.05, -13.0, 3.0],
+    ];
+    lanternDefs.forEach(([x, y, z, ph]) => {
+      this.giantButton(x, y, z, 1.8, M.feltButter, {
+        move: { axis: 'y', amp: 0.3, speed: 0.85, phase: ph },
+        thread: M.pinkYarn,
+      });
+      const glow = new THREE.PointLight(0xffcf7a, 0.5, 6, 2);
+      glow.position.set(x, y + 1.3, z);
+      this.group.add(glow);
+    });
+    this.addCollectible(-1.7, 3.6, -4.9);
+    this.addCollectible(-1.2, 5.7, -13.0);
+
+    this.addBox(0, 4.5, -18.5, 4.4, 1, 4.4, M.linen, {});
+    this.addCheckpoint(-1.6, 4.5, -17.3, 'Lantern Steps');
+    this.feltFlower(1.8, 4.5, -20.2, 0.7, M.feltLilac);
+    this.bunting([-2.4, 6.6, -18.5], [2.4, 6.6, -18.5], 1.1);
+
+    /* --- 3. frost ribbons --- */
+    const ribbonDefs = [
+      [0, 5.5, -22.5, 3.2, 0.0, M.threadLilac],
+      [0, 6.6, -26.7, 2.9, 1.0, M.threadMint],
+      [0, 7.8, -31.0, 2.6, 2.0, M.threadButter],
+      [0, 9.0, -35.4, 2.2, 3.0, M.threadPink],
+    ];
+    ribbonDefs.forEach(([x, y, z, amp, ph, mat]) => {
+      const col = this.addBox(x, y, z, 3.4, 0.5, 3.4, mat, {
+        move: { axis: 'x', amp, speed: 0.5, phase: ph },
+      });
+      for (const [ex, ez, ew, ed] of [[0, 1.75, 3.7, 0.2], [0, -1.75, 3.7, 0.2], [1.75, 0, 0.2, 3.7], [-1.75, 0, 0.2, 3.7]]) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(ew, 0.18, ed), M.feltCream);
+        bar.position.set(ex, 0.2, ez);
+        col.mesh.add(bar);
+      }
+    });
+    this.addCollectible(0, 8.1, -31.0);
+
+    /* --- 4. moon cushion, and the springs that launch you skyward --- */
+    const cushionCol = this.addCyl(0, 9.9, -40.5, 2.6, 4.2, M.feltCoral, { seg: 30 });
+    cushionCol.mesh.visible = false;
+    const cushionProfile = [
+      [0, 2.1], [1.4, 2.05], [2.1, 1.8], [2.55, 1.2],
+      [2.75, 0.25], [2.6, -0.9], [2.05, -1.8], [0, -2.1],
+    ].reverse().map(([r, y]) => new THREE.Vector2(r, y));
+    const cushionMesh = new THREE.Mesh(new THREE.LatheGeometry(cushionProfile, 30), M.feltCoral);
+    cushionMesh.position.copy(cushionCol.pos);
+    cushionMesh.castShadow = true;
+    cushionMesh.receiveShadow = true;
+    this.group.add(cushionMesh);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const pts = cushionProfile
+        .filter((v) => v.x > 0.05)
+        .map((v) => new THREE.Vector3(Math.cos(a) * v.x * 1.01, v.y * 1.01, Math.sin(a) * v.x * 1.01));
+      pts.push(new THREE.Vector3(0, cushionProfile[cushionProfile.length - 1].y * 1.01, 0));
+      const seam = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, 0.04, 5), M.pinkYarn);
+      seam.position.copy(cushionCol.pos);
+      this.group.add(seam);
+    }
+    this.addCheckpoint(0, 9.9, -38.3, 'Moon Cushion');
+
+    const padPositions = [[-1.2, -39.3], [1.2, -39.3], [0, -42.5]];
+    padPositions.forEach(([px, pz]) => {
+      const pad = this.addCyl(px, 10.2, pz, 0.95, 0.9, M.knitMint, { bounce: 25, seg: 20 });
+      const coil = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 8, 26), M.pinkYarn);
+      coil.rotation.x = Math.PI / 2;
+      coil.position.set(px, 10.2, pz);
+      this.group.add(coil);
+      pad.padCoil = coil;
+    });
+
+    /* --- 5. silver spool climb --- */
+    this.spool(0, 20.0, -46, 3.0, 2.8, M.threadLilac);
+    this.spool(4.6, 21.6, -50.3, 2.2, 2.4, M.threadMint);
+    this.spool(8.2, 23.2, -54.6, 2.0, 2.4, M.threadButter);
+    this.addCollectible(4.6, 22.6, -50.3);
+    this.addCheckpoint(8.2, 23.2, -54.6, 'Spool Climb');
+    this.bunting([0, 21.4, -46], [8.2, 24.6, -54.6], 1.3);
+
+    /* --- 6. star balls --- */
+    const ballDefs = [
+      [5.0, 24.6, -58.0, 1.7, M.knitPeach, 0.0],
+      [1.5, 26.0, -61.0, 1.7, M.knitBlue, 1.5],
+    ];
+    ballDefs.forEach(([x, y, z, r, mat, ph]) => {
+      const col = this.addCyl(x, y, z, r * 0.8, 2.0, mat, {
+        move: { axis: 'y', amp: 0.4, speed: 1.1, phase: ph }, seg: 20,
+      });
+      col.mesh.visible = false;
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 18), mat);
+      const holder = new THREE.Group();
+      holder.add(ball);
+      holder.position.copy(col.pos);
+      ball.position.set(0, -r + 1.0, 0);
+      this.group.add(holder);
+      col.visual = holder;
+      holder.userData.spin = 0.004;
+      this.spinners.push(holder);
+    });
+    this.addCollectible(1.5, 27.7, -61.0);
+
+    /* --- 7. the silver needle bridge --- */
+    const needle = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.36, 13, 14), M.metal);
+    shaft.rotation.x = Math.PI / 2;
+    needle.add(shaft);
+    const eye = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.2, 10, 26), M.metal);
+    eye.position.z = -6;
+    eye.rotation.y = Math.PI / 2;
+    needle.add(eye);
+    needle.position.set(1.5, 27.4, -70.5);
+    this.group.add(needle);
+    this.addBox(1.5, 27.9, -70.5, 1.4, 0.4, 12.6, M.linen, {});
+
+    /* --- 8. the moon summit --- */
+    const summitY = 28.6;
+    this.addCyl(1.5, summitY, -83, 5, 2.2, M.feltCream, { seg: 40 });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(2.0, 16, 12), M.feltLilac);
+      petal.position.set(1.5 + Math.cos(a) * 5.1, summitY - 0.9, -83 + Math.sin(a) * 5.1);
+      petal.scale.set(1.2, 0.4, 1.2);
+      petal.castShadow = true;
+      this.group.add(petal);
+    }
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.4, 26, 14), M.feltMoss);
+    stalk.position.set(1.5, summitY - 14, -83);
+    this.group.add(stalk);
+    this.addCheckpoint(-1.4, summitY, -81, 'Moon Summit');
+    this.addCollectible(3.8, summitY + 1.2, -84.5);
+    this.addCollectible(-0.8, summitY + 1.2, -84.5);
+    this.bunting([-4, summitY + 4, -83], [7, summitY + 4, -83], 1.5);
+
+    const goal = new THREE.Group();
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.95, 1.7, 24, 1, true), M.moonMetal);
+    cup.position.y = 0.85;
+    goal.add(cup);
+    const domeG = new THREE.Mesh(new THREE.SphereGeometry(0.8, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.moonMetal);
+    domeG.position.y = 1.7;
+    goal.add(domeG);
+    for (let ring = 0; ring < 3; ring++) {
+      const dimple = new THREE.Mesh(new THREE.TorusGeometry(0.85 - ring * 0.03, 0.045, 6, 24), M.moonMetal);
+      dimple.rotation.x = Math.PI / 2;
+      dimple.position.y = 0.47 + ring * 0.42;
+      goal.add(dimple);
+    }
+    goal.position.set(1.5, summitY + 0.4, -83);
+    this.group.add(goal);
+    this.goal = { group: goal, pos: new THREE.Vector3(1.5, summitY + 1, -83), reached: false };
+    this.addCyl(1.5, summitY + 0.4, -83, 1.3, 0.8, M.knitBlue, { seg: 20 });
+
+    const moonGlow = new THREE.PointLight(0xcfe0ff, 1.2, 20, 2);
+    moonGlow.position.set(1.5, summitY + 4, -83);
+    this.group.add(moonGlow);
+
+    const cloudDefs = [
+      [-14, 8, -18, 1.1], [12, 12, -30, 1.3], [-16, 16, -42, 1.2],
+      [14, 20, -55, 1.0], [-12, 24, -65, 1.3], [10, 27, -75, 1.1],
+      [-10, 29, -85, 1.4],
+    ];
+    for (const [x, y, z, s] of cloudDefs) {
+      const c = this.cloud(x, y, z, s);
+      this.movers.push({
+        col: { pos: c.position, mesh: c }, base: c.position.clone(), axis: 'x',
+        amp: 1.6 + Math.random() * 1.8, speed: 0.12 + Math.random() * 0.12,
+        phase: Math.random() * 6, delta: new THREE.Vector3(),
+      });
+    }
+  }
+
 }

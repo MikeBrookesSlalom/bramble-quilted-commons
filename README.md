@@ -12,6 +12,12 @@ pincushion with springs, a tower of thread spools, bobbing balls of yarn, a
 sewing needle for a bridge, and a giant felt flower at the summit.
 
 There are no enemies and nothing to lose — just a world to climb and explore.
+Find the Golden Thimble and you can choose to continue into a second level,
+**The Midnight Mending Loft** — a moonlit version of the same journey, with
+lantern-lit buttons, silver spools, and a Silver Thimble waiting at the top.
+Finishing it (worth more spools than level one) offers the choice to start
+the whole game over — your spool balance and unlocked characters are never
+reset.
 
 Finish a run and you earn spools of thread — spend them in the Yarn Shop
 (the 👗 button) to unlock new knitted friends, including a lilac bunny
@@ -76,8 +82,8 @@ works with no internet connection). No build step, no dependencies to install.
 | `src/bear.js` | builds the knitted character out of lumpy spheres, parameterized by a "skin" (colours + ear shape), and animates it — walking, jumping, hovering, idle gestures |
 | `src/characters.js` | the roster: Bramble, Evalina, Clementine, Marina — each just a set of yarn colours and an ear shape |
 | `src/progress.js` | localStorage-backed currency, unlocks and the selected character |
-| `src/level.js` | the world: platforms, props, collectibles and checkpoints |
-| `src/game.js` | movement, collision, camera, and the game loop |
+| `src/level.js` | both worlds: platforms, props, collectibles and checkpoints for level 1 and level 2 |
+| `src/game.js` | movement, collision, camera, the game loop, and switching between levels |
 | `src/particles.js` | puffs of lint, sparkles and confetti scraps |
 | `src/sound.js` | a small soft synth for hops, boings, the fanfare, and a generative ambient soundtrack |
 
