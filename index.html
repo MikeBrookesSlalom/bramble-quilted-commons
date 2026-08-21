@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Bramble and the Quilted Commons</title>
 <style>
   :root {
@@ -13,13 +16,23 @@
     --gold: #efb949;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe6f2; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #cfe6f2;
+    overscroll-behavior: none; touch-action: none;
+  }
   body {
     font-family: "Chalkboard SE", "Comic Sans MS", "Bradley Hand", "Segoe Print", ui-rounded, system-ui, sans-serif;
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
   }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  /* shown on phones/tablets in place of the WASD hints */
+  .touch-only { display: none; }
+  body.touch .touch-only { display: inline; }
+  body.touch .desktop-only { display: none; }
 
   /* everything in the UI is a scrap of cloth with a stitched edge */
   .patch {
@@ -56,6 +69,10 @@
   }
   #title .sub { font-size: clamp(14px, 2.2vw, 18px); opacity: .85; margin-bottom: 14px; }
   #title .keys { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; margin: 14px 0 6px; font-size: 14px; }
+  /* #title .keys sets display:flex with higher specificity than .touch-only/.desktop-only alone can beat, so these need their own explicit overrides */
+  #title .keys.touch-only { display: none; }
+  body.touch #title .keys.touch-only { display: flex; }
+  body.touch #title .keys.desktop-only { display: none; }
   kbd {
     display: inline-block; background: #fffaf0; border: 2px solid var(--cloth-edge);
     border-bottom-width: 4px; border-radius: 8px; padding: 3px 9px; font-family: inherit; font-size: 13px;
@@ -94,7 +111,13 @@
   #hint {
     position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
     padding: 9px 20px; font-size: 14px; opacity: .95; transition: opacity .5s ease;
-    text-align: center;
+    text-align: center; max-width: min(70vw, 480px);
+  }
+  /* iPad widths (744px+) always have room either side of the hint bar;
+     narrower phone widths don't, so lift it clear of the joystick/jump row */
+  body.touch #hint { max-width: min(58vw, 420px); }
+  @media (max-width: 700px) {
+    body.touch #hint { bottom: 148px; font-size: 12px; padding: 7px 14px; }
   }
 
   /* ---------- win ---------- */
@@ -108,6 +131,60 @@
   #win h2 { margin: 0 0 8px; font-size: clamp(26px, 4.6vw, 38px); color: #d2748f; }
   #win p { margin: 6px 0; font-size: 17px; }
   #win .again { pointer-events: auto; }
+
+  /* ---------- respawn button (works on any device) ---------- */
+  #respawnBtn {
+    pointer-events: auto; cursor: pointer;
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; line-height: 1;
+  }
+  #respawnBtn:active { transform: translateY(2px); }
+
+  /* ---------- on-screen touch controls (iPad / phone) ---------- */
+  #touchControls { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 6; }
+  body.touch #touchControls { display: block; }
+
+  #joystickZone {
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    width: 132px; height: 132px;
+    pointer-events: auto; touch-action: none;
+  }
+  #joystickBase {
+    width: 100%; height: 100%; border-radius: 50%; position: relative;
+    background: rgba(253, 244, 230, 0.55);
+    border: 2px solid var(--cloth-edge);
+    box-shadow: 0 4px 0 rgba(120,96,70,.14), 0 10px 20px rgba(80,60,40,.14);
+  }
+  #joystickBase::after {
+    content: ""; position: absolute; inset: 11px; border-radius: 50%;
+    border: 2.5px dashed rgba(160,132,100,.55);
+  }
+  #joystickKnob {
+    position: absolute; left: 50%; top: 50%; width: 54px; height: 54px;
+    margin: -27px 0 0 -27px; border-radius: 50%;
+    background: linear-gradient(#f5a3b8, var(--thread));
+    box-shadow: 0 4px 0 #d0728c, 0 8px 16px rgba(210,120,145,.35);
+    will-change: transform;
+  }
+
+  #jumpBtn {
+    position: absolute;
+    right: max(24px, env(safe-area-inset-right));
+    bottom: max(28px, env(safe-area-inset-bottom));
+    width: 94px; height: 94px; border-radius: 50%;
+    pointer-events: auto; touch-action: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    background: linear-gradient(#f5a3b8, var(--thread));
+    border: 3px solid #fff8ef;
+    box-shadow: 0 5px 0 #d0728c, 0 12px 22px rgba(210,120,145,.4);
+    color: #fff; font-family: inherit; font-weight: bold; font-size: 13px;
+    transition: transform .06s ease, box-shadow .06s ease;
+  }
+  #jumpBtn .arrow { font-size: 28px; line-height: 1; margin-bottom: 2px; }
+  #jumpBtn.active { transform: translateY(3px); box-shadow: 0 2px 0 #d0728c; }
 </style>
 </head>
 <body>
@@ -116,14 +193,21 @@
 <div id="ui">
   <div id="hud">
     <div id="buttons" class="patch"><span class="pip"></span><span id="count">0 / 0</span> buttons</div>
+    <div id="respawnBtn" class="patch" title="Back to the last thimble">↺</div>
   </div>
 
   <div id="toast" class="patch"></div>
 
   <div id="hint" class="patch">
-    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> wander &nbsp;·&nbsp;
-    <kbd>Space</kbd> hop (press again mid-air for a flutter) &nbsp;·&nbsp;
-    drag to look &nbsp;·&nbsp; <kbd>R</kbd> back to the last thimble
+    <span class="desktop-only">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> wander &nbsp;·&nbsp;
+      <kbd>Space</kbd> hop (press again mid-air for a flutter) &nbsp;·&nbsp;
+      drag to look &nbsp;·&nbsp; <kbd>R</kbd> back to the last thimble
+    </span>
+    <span class="touch-only">
+      left thumb to wander &nbsp;·&nbsp; drag anywhere to look &nbsp;·&nbsp;
+      pinch to zoom &nbsp;·&nbsp; tap ⤴ to hop (tap again mid-air for a flutter)
+    </span>
   </div>
 
   <div id="win">
@@ -141,15 +225,30 @@
       <div style="font-size:14px; letter-spacing:.18em; opacity:.6">A HAND-KNITTED ADVENTURE</div>
       <h1>Bramble<br /><span style="font-size:.62em; color:#d2748f">and the Quilted Commons</span></h1>
       <div class="sub">Hop from button to button, bounce off the pincushion, climb the spool tower<br />and find the Golden Thimble at the top of the great felt flower.</div>
-      <div class="keys">
+      <div class="keys desktop-only">
         <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
         <span><kbd>Space</kbd> jump &amp; double-jump</span>
         <span><kbd>mouse</kbd> look</span>
         <span><kbd>R</kbd> respawn</span>
       </div>
+      <div class="keys touch-only">
+        <span>left thumb: move</span>
+        <span>drag: look around</span>
+        <span>pinch: zoom</span>
+        <span>⤴ button: jump &amp; double-jump</span>
+      </div>
       <button id="play">Let's go!</button>
     </div>
   </div>
+</div>
+
+<div id="touchControls">
+  <div id="joystickZone">
+    <div id="joystickBase">
+      <div id="joystickKnob"></div>
+    </div>
+  </div>
+  <div id="jumpBtn"><span class="arrow">⤴</span>hop</div>
 </div>
 
 <script type="importmap">

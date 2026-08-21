@@ -53,3 +53,66 @@ document.getElementById('play').addEventListener('click', () => {
 document.getElementById('keepgoing').addEventListener('click', () => {
   document.getElementById('win').classList.remove('show');
 });
+
+document.getElementById('respawnBtn').addEventListener('click', () => game.respawn());
+
+/* ---------------- touch controls (iPad / phone) ---------------- */
+
+const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isTouch) document.body.classList.add('touch');
+
+// virtual joystick: drag the knob, read out an -1..1 vector per axis
+const joyZone = document.getElementById('joystickZone');
+const joyKnob = document.getElementById('joystickKnob');
+const JOY_RADIUS = 42;
+let joyPointerId = null;
+let joyCenter = { x: 0, y: 0 };
+
+function joyUpdate(clientX, clientY) {
+  let dx = clientX - joyCenter.x;
+  let dy = clientY - joyCenter.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > JOY_RADIUS) { dx = (dx / dist) * JOY_RADIUS; dy = (dy / dist) * JOY_RADIUS; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  // up on the stick (negative dy) means "forward", matching W
+  game.setMoveAxis(dx / JOY_RADIUS, -dy / JOY_RADIUS);
+}
+
+joyZone.addEventListener('pointerdown', (e) => {
+  joyPointerId = e.pointerId;
+  try { joyZone.setPointerCapture(joyPointerId); } catch {}
+  const rect = joyZone.getBoundingClientRect();
+  joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  joyUpdate(e.clientX, e.clientY);
+  ui.hideHintOnce();
+  e.preventDefault();
+});
+joyZone.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== joyPointerId) return;
+  joyUpdate(e.clientX, e.clientY);
+  e.preventDefault();
+});
+const joyEnd = (e) => {
+  if (e.pointerId !== joyPointerId) return;
+  joyPointerId = null;
+  joyKnob.style.transform = 'translate(0px, 0px)';
+  game.setMoveAxis(0, 0);
+};
+joyZone.addEventListener('pointerup', joyEnd);
+joyZone.addEventListener('pointercancel', joyEnd);
+
+// jump button: held down = full hop (release early for a short hop), a
+// fresh tap while airborne triggers the flutter, exactly like Space
+const jumpBtn = document.getElementById('jumpBtn');
+jumpBtn.addEventListener('pointerdown', (e) => {
+  try { jumpBtn.setPointerCapture(e.pointerId); } catch {}
+  jumpBtn.classList.add('active');
+  game.pressJump();
+  e.preventDefault();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((evt) =>
+  jumpBtn.addEventListener(evt, () => {
+    jumpBtn.classList.remove('active');
+    game.releaseJump();
+  })
+);

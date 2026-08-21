@@ -75,6 +75,7 @@ export class Game {
     this.camLook = new THREE.Vector3();
 
     this.keys = new Set();
+    this.touchAxis = { x: 0, z: 0 };   // virtual joystick, -1..1 per axis
     this.bindInput(canvas);
     this.onResize();
     addEventListener('resize', () => this.onResize());
@@ -120,33 +121,83 @@ export class Game {
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
 
-    let dragging = false, lastX = 0, lastY = 0;
+    // One finger drags the camera; two fingers pinch to zoom. Mouse still
+    // requests pointer lock so desktop players get frictionless look-around;
+    // touch never does, since iPadOS doesn't support it and it isn't needed
+    // — the on-screen joystick and jump button live in their own DOM layer
+    // above the canvas, so their touches never reach these handlers at all.
+    const pointers = new Map();
+    let pinchStartDist = null, pinchStartCamDist = null;
+    const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
     canvas.addEventListener('pointerdown', (e) => {
-      dragging = true; lastX = e.clientX; lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-      if (this.started && document.pointerLockElement !== canvas) {
-        // pointer lock is unavailable in some embedded frames — drag-to-look still works
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      // capture can throw in edge cases (already-released pointer, some
+      // iOS Safari timing quirks) — never let that skip the state below
+      try { canvas.setPointerCapture(e.pointerId); } catch {}
+      if (e.pointerType === 'mouse' && this.started && document.pointerLockElement !== canvas) {
         const req = canvas.requestPointerLock?.();
         if (req && req.catch) req.catch(() => {});
       }
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        pinchStartDist = dist2(a, b);
+        pinchStartCamDist = this.dist;
+      }
     });
-    canvas.addEventListener('pointerup', (e) => {
-      dragging = false;
-      canvas.releasePointerCapture?.(e.pointerId);
-    });
+    const endPointer = (e) => {
+      pointers.delete(e.pointerId);
+      try { canvas.releasePointerCapture?.(e.pointerId); } catch {}
+      if (pointers.size < 2) pinchStartDist = null;
+    };
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+
     addEventListener('pointermove', (e) => {
       const locked = document.pointerLockElement === canvas;
-      let dx = 0, dy = 0;
-      if (locked) { dx = e.movementX; dy = e.movementY; }
-      else if (dragging) { dx = e.clientX - lastX; dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; }
-      else return;
-      this.yaw -= dx * 0.0032;
-      this.pitch = THREE.MathUtils.clamp(this.pitch + dy * 0.0026, -0.5, 1.05);
+      if (locked) {
+        this.yaw -= e.movementX * 0.0032;
+        this.pitch = THREE.MathUtils.clamp(this.pitch + e.movementY * 0.0026, -0.5, 1.05);
+        return;
+      }
+      if (!pointers.has(e.pointerId)) return;
+      const prev = pointers.get(e.pointerId);
+      const cur = { x: e.clientX, y: e.clientY };
+
+      if (pointers.size === 2) {
+        pointers.set(e.pointerId, cur);
+        const [a, b] = [...pointers.values()];
+        if (pinchStartDist) {
+          const d = dist2(a, b);
+          this.dist = THREE.MathUtils.clamp(pinchStartCamDist * (pinchStartDist / d), 4.5, 16);
+        }
+        return;
+      }
+
+      pointers.set(e.pointerId, cur);
+      this.yaw -= (cur.x - prev.x) * 0.0032;
+      this.pitch = THREE.MathUtils.clamp(this.pitch + (cur.y - prev.y) * 0.0026, -0.5, 1.05);
     });
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       this.dist = THREE.MathUtils.clamp(this.dist + e.deltaY * 0.008, 4.5, 16);
     }, { passive: false });
+  }
+
+  // driven by the on-screen joystick — x is left/right, z is forward/back
+  setMoveAxis(x, z) {
+    this.touchAxis.x = Math.abs(x) < 0.08 ? 0 : x;
+    this.touchAxis.z = Math.abs(z) < 0.08 ? 0 : z;
+  }
+
+  pressJump() {
+    this.keys.add('Space');
+    this.jumpBuffer = 0.16;
+    this.ui.hideHintOnce();
+  }
+
+  releaseJump() {
+    this.keys.delete('Space');
   }
 
   start() {
@@ -283,13 +334,17 @@ export class Game {
     if (k.has('KeyS') || k.has('ArrowDown')) iz -= 1;
     if (k.has('KeyA') || k.has('ArrowLeft')) ix -= 1;
     if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
+    ix += this.touchAxis.x;
+    iz += this.touchAxis.z;
 
     // movement is relative to wherever the camera is looking
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     let wx = ix * cos - iz * sin;
     let wz = -ix * sin - iz * cos;
+    // clamp to a unit vector rather than always normalizing to one, so a
+    // half-tilted joystick still moves at half speed
     const mag = Math.hypot(wx, wz);
-    if (mag > 0) { wx /= mag; wz /= mag; }
+    if (mag > 1) { wx /= mag; wz /= mag; }
 
     const accel = this.grounded ? ACCEL_GROUND : ACCEL_AIR;
     if (mag > 0) {
