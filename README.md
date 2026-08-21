@@ -13,16 +13,21 @@ sewing needle for a bridge, and a giant felt flower at the summit.
 
 There are no enemies and nothing to lose — just a world to climb and explore.
 Find the Golden Thimble and you can choose to continue into a second level,
-**The Midnight Mending Loft** — a moonlit version of the same journey, with
-lantern-lit buttons, silver spools, and a Silver Thimble waiting at the top.
-Finishing it (worth more spools than level one) offers the choice to start
-the whole game over — your spool balance and unlocked characters are never
-reset.
+**The Midnight Mending Loft** — a genuinely different night-time route: a
+quick zigzag of lantern buttons, platforms that sway toward and away from
+you instead of side to side, a chain of small bouncy pops, a gondola you
+ride across a gap, a switchback spiral up a tower of spools, one huge
+spring launch, and a calm silver-needle bridge to a Silver Thimble at the
+top. Finishing it (worth more spools than level one) offers the choice to
+start the whole game over — your spool balance and unlocked characters are
+never reset.
 
 Finish a run and you earn spools of thread — spend them in the Yarn Shop
-(the 👗 button) to unlock new knitted friends, including a lilac bunny
-named **Evalina**, a peachy fox named Clementine, and a minty seal named
-Marina. Whoever you're wearing remembers itself between sessions.
+(the 👗 button) to unlock new knitted friends, each a genuinely different
+animal, not just a recolour: **Evalina**, a pink bunny with a bow in her
+ears and a little crochet dress; **Clementine**, a peachy fox with a bushy
+tail; and **Marina**, a minty seal with flippers instead of paws. Whoever
+you're wearing remembers itself between sessions.
 
 Standing still for a couple of seconds sets off a little gesture — a
 curious look around, a big stretch, a happy wiggle — and any input

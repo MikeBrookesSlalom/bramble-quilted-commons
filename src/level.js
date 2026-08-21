@@ -719,6 +719,11 @@ export class World {
     }
   }
   /* ================= level 2: The Midnight Mending Loft ================= */
+  /* A genuinely different route from level 1: a quick zigzag warm-up,
+     platforms that sway toward and away from you instead of side to
+     side, a chain of small bouncy pops, a horizontal gondola you ride
+     across a gap, a switchback spool spiral, one big spring launch,
+     then a calm bridge to the summit. Same fabric world, new shape. */
 
   buildLevel2() {
     const M = this.mat;
@@ -745,54 +750,100 @@ export class World {
       this.grassTuft(Math.cos(a) * r, 0, 4 + Math.sin(a) * r, M.grass);
     }
     this.embroideryHoop(-6.2, 5.0, 1.5, 3.6, Math.PI * 0.3);
-
     this.addCheckpoint(2.2, 0, 3, 'Moonlit Meadow').active = true;
 
-    /* --- 2. lantern steps --- */
-    const lanternDefs = [
+    /* --- 2. firefly steps: a quick zigzag warm-up --- */
+    const fireflyDefs = [
       [1.6, 0.95, -0.6, 0.0],
-      [-1.7, 1.95, -4.9, 1.0],
-      [1.8, 3.0, -9.0, 2.0],
-      [-1.2, 4.05, -13.0, 3.0],
+      [-1.7, 1.95, -4.9, 1.2],
+      [1.5, 2.9, -8.7, 2.4],
     ];
-    lanternDefs.forEach(([x, y, z, ph]) => {
-      this.giantButton(x, y, z, 1.8, M.feltButter, {
-        move: { axis: 'y', amp: 0.3, speed: 0.85, phase: ph },
+    fireflyDefs.forEach(([x, y, z, ph]) => {
+      this.giantButton(x, y, z, 1.7, M.feltButter, {
+        move: { axis: 'y', amp: 0.28, speed: 0.9, phase: ph },
         thread: M.pinkYarn,
       });
       const glow = new THREE.PointLight(0xffcf7a, 0.5, 6, 2);
-      glow.position.set(x, y + 1.3, z);
+      glow.position.set(x, y + 1.2, z);
       this.group.add(glow);
     });
     this.addCollectible(-1.7, 3.6, -4.9);
-    this.addCollectible(-1.2, 5.7, -13.0);
 
-    this.addBox(0, 4.5, -18.5, 4.4, 1, 4.4, M.linen, {});
-    this.addCheckpoint(-1.6, 4.5, -17.3, 'Lantern Steps');
-    this.feltFlower(1.8, 4.5, -20.2, 0.7, M.feltLilac);
-    this.bunting([-2.4, 6.6, -18.5], [2.4, 6.6, -18.5], 1.1);
+    this.addBox(0, 3.3, -12.5, 3.6, 1, 3.6, M.linen, {});
+    this.addCheckpoint(-1.4, 3.3, -11.3, 'Firefly Steps');
+    this.feltFlower(1.6, 3.3, -14.0, 0.6, M.feltLilac);
 
-    /* --- 3. frost ribbons --- */
-    const ribbonDefs = [
-      [0, 5.5, -22.5, 3.2, 0.0, M.threadLilac],
-      [0, 6.6, -26.7, 2.9, 1.0, M.threadMint],
-      [0, 7.8, -31.0, 2.6, 2.0, M.threadButter],
-      [0, 9.0, -35.4, 2.2, 3.0, M.threadPink],
+    /* --- 3. swaying curtains: platforms that swing toward and away
+       from you (z-axis), a different timing feel from level 1's
+       side-to-side ribbons --- */
+    const curtainDefs = [
+      [0, 4.2, -16.3, 1.6, 0.0, M.threadLilac],
+      [0, 5.3, -19.9, 1.6, 1.6, M.threadMint],
+      [0, 6.4, -23.5, 1.6, 3.2, M.threadButter],
     ];
-    ribbonDefs.forEach(([x, y, z, amp, ph, mat]) => {
-      const col = this.addBox(x, y, z, 3.4, 0.5, 3.4, mat, {
-        move: { axis: 'x', amp, speed: 0.5, phase: ph },
+    curtainDefs.forEach(([x, y, z, amp, ph, mat]) => {
+      const col = this.addBox(x, y, z, 3.2, 0.5, 3.2, mat, {
+        move: { axis: 'z', amp, speed: 0.6, phase: ph },
       });
-      for (const [ex, ez, ew, ed] of [[0, 1.75, 3.7, 0.2], [0, -1.75, 3.7, 0.2], [1.75, 0, 0.2, 3.7], [-1.75, 0, 0.2, 3.7]]) {
+      for (const [ex, ez, ew, ed] of [[0, 1.65, 3.5, 0.2], [0, -1.65, 3.5, 0.2], [1.65, 0, 0.2, 3.5], [-1.65, 0, 0.2, 3.5]]) {
         const bar = new THREE.Mesh(new THREE.BoxGeometry(ew, 0.18, ed), M.feltCream);
         bar.position.set(ex, 0.2, ez);
         col.mesh.add(bar);
       }
     });
-    this.addCollectible(0, 8.1, -31.0);
+    this.addCollectible(0, 6.9, -23.5);
 
-    /* --- 4. moon cushion, and the springs that launch you skyward --- */
-    const cushionCol = this.addCyl(0, 9.9, -40.5, 2.6, 4.2, M.feltCoral, { seg: 30 });
+    this.addBox(0, 6.8, -27.0, 3.4, 1, 3.4, M.linen, {});
+    this.addCheckpoint(0, 6.8, -25.8, 'Swaying Curtains');
+    this.bunting([-2, 8.4, -27], [2, 8.4, -27], 0.9);
+
+    /* --- 4. a bouncy little pop-pop-pop chain --- */
+    const popDefs = [
+      [0, 7.4, -29.6],
+      [0, 8.3, -31.9],
+      [0, 9.2, -34.2],
+    ];
+    popDefs.forEach(([x, y, z]) => {
+      const pad = this.addCyl(x, y, z, 0.95, 0.85, M.knitMint, { bounce: 14, seg: 20 });
+      const coil = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 8, 26), M.pinkYarn);
+      coil.rotation.x = Math.PI / 2;
+      coil.position.set(x, y, z);
+      this.group.add(coil);
+      pad.padCoil = coil;
+    });
+
+    /* --- 5. the star gondola: ride it across the gap --- */
+    const gondola = this.addBox(0, 9.7, -37.7, 3.0, 0.5, 3.0, M.threadPink, {
+      move: { axis: 'x', amp: 4.2, speed: 0.42, phase: 0 },
+    });
+    for (const [ex, ez, ew, ed] of [[0, 1.55, 3.3, 0.2], [0, -1.55, 3.3, 0.2], [1.55, 0, 0.2, 3.3], [-1.55, 0, 0.2, 3.3]]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(ew, 0.18, ed), M.feltCream);
+      bar.position.set(ex, 0.2, ez);
+      gondola.mesh.add(bar);
+    }
+    // a little canopy overhead so it reads as a gondola, not just a raft
+    const canopyPost = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), M.wood);
+    canopyPost.position.y = 1.0;
+    gondola.mesh.add(canopyPost);
+    const canopy = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 14), M.feltLilac);
+    canopy.position.y = 1.9;
+    gondola.mesh.add(canopy);
+    this.addCollectible(0, 11.6, -37.7);
+
+    this.addBox(5.6, 10.2, -40.5, 3.6, 1, 3.6, M.linen, {});
+    this.addCheckpoint(5.6, 10.2, -39.3, 'Star Gondola');
+
+    /* --- 6. spiral spools: a switchback climb, not a straight line --- */
+    this.spool(5.6, 12.0, -44.0, 2.2, 2.4, M.threadLilac);
+    this.spool(1.8, 13.6, -47.5, 2.2, 2.4, M.threadMint);
+    this.spool(5.4, 15.2, -51.0, 2.0, 2.4, M.threadButter);
+    this.addCollectible(1.8, 14.6, -47.5);
+    this.addCheckpoint(5.4, 15.2, -51.0, 'Spiral Spools');
+    this.bunting([1.8, 14.6, -47.5], [5.4, 16.6, -51.0], 0.9);
+
+    /* --- 7. the big launch: one great spring, same trusted shape as
+       level 1's pincushion, just recoloured and repositioned --- */
+    const cushionCol = this.addCyl(5.4, 15.6, -53.8, 2.6, 4.2, M.feltCoral, { seg: 30 });
     cushionCol.mesh.visible = false;
     const cushionProfile = [
       [0, 2.1], [1.4, 2.05], [2.1, 1.8], [2.55, 1.2],
@@ -813,30 +864,26 @@ export class World {
       seam.position.copy(cushionCol.pos);
       this.group.add(seam);
     }
-    this.addCheckpoint(0, 9.9, -38.3, 'Moon Cushion');
+    this.addCheckpoint(5.4, 15.6, -51.7, 'The Big Launch');
 
-    const padPositions = [[-1.2, -39.3], [1.2, -39.3], [0, -42.5]];
+    const padPositions = [[4.2, -53.0], [6.6, -53.0], [5.4, -55.9]];
     padPositions.forEach(([px, pz]) => {
-      const pad = this.addCyl(px, 10.2, pz, 0.95, 0.9, M.knitMint, { bounce: 25, seg: 20 });
+      const pad = this.addCyl(px, 15.9, pz, 0.95, 0.9, M.knitBlue, { bounce: 25, seg: 20 });
       const coil = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 8, 26), M.pinkYarn);
       coil.rotation.x = Math.PI / 2;
-      coil.position.set(px, 10.2, pz);
+      coil.position.set(px, 15.9, pz);
       this.group.add(coil);
       pad.padCoil = coil;
     });
 
-    /* --- 5. silver spool climb --- */
-    this.spool(0, 20.0, -46, 3.0, 2.8, M.threadLilac);
-    this.spool(4.6, 21.6, -50.3, 2.2, 2.4, M.threadMint);
-    this.spool(8.2, 23.2, -54.6, 2.0, 2.4, M.threadButter);
-    this.addCollectible(4.6, 22.6, -50.3);
-    this.addCheckpoint(8.2, 23.2, -54.6, 'Spool Climb');
-    this.bunting([0, 21.4, -46], [8.2, 24.6, -54.6], 1.3);
+    /* --- 8. landing among the stars --- */
+    this.spool(5.4, 25.0, -58.5, 2.2, 2.6, M.threadLilac);
+    this.addCollectible(5.4, 27.0, -58.5);
+    this.addCheckpoint(5.4, 25.0, -58.5, 'Among the Stars');
 
-    /* --- 6. star balls --- */
     const ballDefs = [
-      [5.0, 24.6, -58.0, 1.7, M.knitPeach, 0.0],
-      [1.5, 26.0, -61.0, 1.7, M.knitBlue, 1.5],
+      [2.0, 26.3, -61.5, 1.7, M.knitPeach, 0.0],
+      [5.0, 27.6, -64.5, 1.7, M.knitBlue, 1.5],
     ];
     ballDefs.forEach(([x, y, z, r, mat, ph]) => {
       const col = this.addCyl(x, y, z, r * 0.8, 2.0, mat, {
@@ -853,9 +900,9 @@ export class World {
       holder.userData.spin = 0.004;
       this.spinners.push(holder);
     });
-    this.addCollectible(1.5, 27.7, -61.0);
+    this.addCollectible(5.0, 29.3, -64.5);
 
-    /* --- 7. the silver needle bridge --- */
+    /* --- 9. the silver needle bridge — a calm finish after the launch --- */
     const needle = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.36, 13, 14), M.metal);
     shaft.rotation.x = Math.PI / 2;
@@ -864,28 +911,28 @@ export class World {
     eye.position.z = -6;
     eye.rotation.y = Math.PI / 2;
     needle.add(eye);
-    needle.position.set(1.5, 27.4, -70.5);
+    needle.position.set(5.0, 28.1, -74.3);
     this.group.add(needle);
-    this.addBox(1.5, 27.9, -70.5, 1.4, 0.4, 12.6, M.linen, {});
+    this.addBox(5.0, 28.6, -74.3, 1.4, 0.4, 12.6, M.linen, {});
 
-    /* --- 8. the moon summit --- */
-    const summitY = 28.6;
-    this.addCyl(1.5, summitY, -83, 5, 2.2, M.feltCream, { seg: 40 });
+    /* --- 10. the moon summit --- */
+    const summitY = 29.4;
+    this.addCyl(5.0, summitY, -87, 5, 2.2, M.feltCream, { seg: 40 });
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * Math.PI * 2;
       const petal = new THREE.Mesh(new THREE.SphereGeometry(2.0, 16, 12), M.feltLilac);
-      petal.position.set(1.5 + Math.cos(a) * 5.1, summitY - 0.9, -83 + Math.sin(a) * 5.1);
+      petal.position.set(5.0 + Math.cos(a) * 5.1, summitY - 0.9, -87 + Math.sin(a) * 5.1);
       petal.scale.set(1.2, 0.4, 1.2);
       petal.castShadow = true;
       this.group.add(petal);
     }
     const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.4, 26, 14), M.feltMoss);
-    stalk.position.set(1.5, summitY - 14, -83);
+    stalk.position.set(5.0, summitY - 14, -87);
     this.group.add(stalk);
-    this.addCheckpoint(-1.4, summitY, -81, 'Moon Summit');
-    this.addCollectible(3.8, summitY + 1.2, -84.5);
-    this.addCollectible(-0.8, summitY + 1.2, -84.5);
-    this.bunting([-4, summitY + 4, -83], [7, summitY + 4, -83], 1.5);
+    this.addCheckpoint(2.1, summitY, -85, 'Moon Summit');
+    this.addCollectible(7.3, summitY + 1.2, -88.5);
+    this.addCollectible(2.7, summitY + 1.2, -88.5);
+    this.bunting([-0.5, summitY + 4, -87], [10.5, summitY + 4, -87], 1.5);
 
     const goal = new THREE.Group();
     const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.95, 1.7, 24, 1, true), M.moonMetal);
@@ -900,19 +947,19 @@ export class World {
       dimple.position.y = 0.47 + ring * 0.42;
       goal.add(dimple);
     }
-    goal.position.set(1.5, summitY + 0.4, -83);
+    goal.position.set(5.0, summitY + 0.4, -87);
     this.group.add(goal);
-    this.goal = { group: goal, pos: new THREE.Vector3(1.5, summitY + 1, -83), reached: false };
-    this.addCyl(1.5, summitY + 0.4, -83, 1.3, 0.8, M.knitBlue, { seg: 20 });
+    this.goal = { group: goal, pos: new THREE.Vector3(5.0, summitY + 1, -87), reached: false };
+    this.addCyl(5.0, summitY + 0.4, -87, 1.3, 0.8, M.knitBlue, { seg: 20 });
 
     const moonGlow = new THREE.PointLight(0xcfe0ff, 1.2, 20, 2);
-    moonGlow.position.set(1.5, summitY + 4, -83);
+    moonGlow.position.set(5.0, summitY + 4, -87);
     this.group.add(moonGlow);
 
     const cloudDefs = [
-      [-14, 8, -18, 1.1], [12, 12, -30, 1.3], [-16, 16, -42, 1.2],
-      [14, 20, -55, 1.0], [-12, 24, -65, 1.3], [10, 27, -75, 1.1],
-      [-10, 29, -85, 1.4],
+      [-12, 8, -18, 1.1], [16, 10, -30, 1.3], [-14, 13, -40, 1.2],
+      [18, 16, -50, 1.0], [-10, 20, -58, 1.3], [14, 24, -68, 1.1],
+      [-8, 28, -80, 1.4],
     ];
     for (const [x, y, z, s] of cloudDefs) {
       const c = this.cloud(x, y, z, s);
@@ -923,5 +970,4 @@ export class World {
       });
     }
   }
-
 }

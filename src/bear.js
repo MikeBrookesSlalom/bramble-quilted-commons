@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { knitCanvas, fabricMaterial } from './textures.js';
 
 /* ------------------------------------------------------------------
-   Bramble — a hand-knitted bear, built from lumpy chenille yarn.
-   White head, blue-and-white marled body and limbs, pink thread
-   tied at the neck. Modelled from the real toy.
+   Every knitted friend shares one rig (a bob, a head, two arms, two
+   legs) so the same walk/jump/idle animation works for all of them,
+   but each species gets its own proportions, ears, muzzle and
+   accessories — a bear, a bunny in a dress, a fox with a tail, and
+   a flippered seal, not four recolours of the same toy.
 ------------------------------------------------------------------ */
 
 // push vertices in and out along their normals so the surface reads as
@@ -33,18 +35,56 @@ function knitMat(opts) {
 }
 
 const DEFAULT_SKIN = {
+  species: 'bear',
   headHex: '#ffffff', headAccent: '#e8f1f7',
   bodyHex: '#4faee6', bodyAccent: '#46a5df', limbHex: '#4aa9e2',
   collarHex: '#f7a9bd',
-  earShape: 'round',
 };
 
-// ears are the one place each character's silhouette really differs
-function buildEars(head, skin, marledYarn2, seedOffset) {
+// body proportions and features per species — the skeleton's
+// attachment points (head/torso/limb positions) stay fixed so nothing
+// clips, only shapes, sizes and accessories change
+const SPECIES = {
+  bear: {
+    torso: [1.0, 1.1, 0.78], torsoR: 0.36,
+    head: [1.25, 0.92, 0.78], headR: 0.35,
+    muzzle: [1.15, 0.78, 0.6], muzzleR: 0.145, muzzleZ: 0.2,
+    arm: [1, 2.3, 0.95], armR: 0.135,
+    leg: [1, 2.6, 0.98], legR: 0.115,
+    ear: 'round',
+  },
+  bunny: {
+    torso: [0.92, 1.0, 0.76], torsoR: 0.34,
+    head: [1.02, 1.0, 0.84], headR: 0.33,
+    muzzle: [1.0, 0.72, 0.6], muzzleR: 0.125, muzzleZ: 0.185,
+    arm: [1, 2.1, 0.95], armR: 0.115,
+    leg: [1, 2.45, 0.98], legR: 0.105,
+    ear: 'long', dress: true, bow: true,
+  },
+  fox: {
+    torso: [1.0, 1.05, 0.8], torsoR: 0.35,
+    head: [1.1, 0.85, 0.7], headR: 0.32,
+    muzzle: [1.7, 0.6, 0.52], muzzleR: 0.13, muzzleZ: 0.3,
+    arm: [1, 2.15, 0.95], armR: 0.12,
+    leg: [1, 2.45, 0.98], legR: 0.105,
+    ear: 'pointed', tail: true, belly: true,
+  },
+  seal: {
+    torso: [1.2, 1.35, 1.0], torsoR: 0.4,
+    head: [1.05, 0.85, 0.88], headR: 0.29,
+    muzzle: [1.0, 0.68, 0.68], muzzleR: 0.105, muzzleZ: 0.15,
+    arm: [2.4, 1.0, 0.7], armR: 0.13,
+    leg: [2.5, 0.95, 0.68], legR: 0.135,
+    ear: 'tiny',
+  },
+};
+
+// ears are the single biggest silhouette difference between species
+function buildEars(head, earShape, skin, marledYarn2, seedOffset) {
   const ears = [];
   const stitchMat = new THREE.MeshStandardMaterial({ color: skin.collarHex, roughness: 0.95 });
 
-  if (skin.earShape === 'long') {
+  if (earShape === 'long') {
     // tall floppy bunny ears, upright with a gentle forward droop
     const earGeo = lumpify(new THREE.SphereGeometry(0.1, 16, 14), 0.035, 16 + seedOffset);
     earGeo.scale(1, 3.1, 0.55);
@@ -63,7 +103,7 @@ function buildEars(head, skin, marledYarn2, seedOffset) {
       stitch.rotation.x = 1.2;
       head.add(stitch);
     }
-  } else if (skin.earShape === 'pointed') {
+  } else if (earShape === 'pointed') {
     // pert little fox points, high on the corners
     const earGeo = lumpify(new THREE.ConeGeometry(0.16, 0.26, 14), 0.03, 16 + seedOffset);
     for (const side of [-1, 1]) {
@@ -77,6 +117,21 @@ function buildEars(head, skin, marledYarn2, seedOffset) {
 
       const stitch = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.015, 6, 14), stitchMat);
       stitch.position.set(0.29 * side, 0.18, 0.05);
+      stitch.rotation.x = 1.2;
+      head.add(stitch);
+    }
+  } else if (earShape === 'tiny') {
+    // barely-there seal ears, small round nubs close to the head
+    const earGeo = lumpify(new THREE.SphereGeometry(0.06, 12, 10), 0.02, 14 + seedOffset);
+    for (const side of [-1, 1]) {
+      const ear = new THREE.Mesh(earGeo, marledYarn2);
+      ear.position.set(0.24 * side, 0.2, -0.08);
+      ear.castShadow = true;
+      head.add(ear);
+      ears.push(ear);
+
+      const stitch = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.01, 6, 12), stitchMat);
+      stitch.position.set(0.24 * side, 0.13, -0.02);
       stitch.rotation.x = 1.2;
       head.add(stitch);
     }
@@ -100,8 +155,76 @@ function buildEars(head, skin, marledYarn2, seedOffset) {
   return ears;
 }
 
+// a fluffy fox tail, stacked lumps tapering to a cream tip
+function buildTail(bob, marledYarn2, whiteYarn) {
+  const tailGroup = new THREE.Group();
+  const segs = [
+    { r: 0.155, y: 0, z: 0, mat: marledYarn2 },
+    { r: 0.135, y: 0.12, z: -0.13, mat: marledYarn2 },
+    { r: 0.1, y: 0.25, z: -0.24, mat: whiteYarn },
+  ];
+  segs.forEach((seg) => {
+    const m = new THREE.Mesh(lumpify(new THREE.SphereGeometry(seg.r, 14, 12), 0.03, 14), seg.mat);
+    m.position.set(0, seg.y, seg.z);
+    m.castShadow = true;
+    tailGroup.add(m);
+  });
+  tailGroup.position.set(0, 0.78, -0.3);
+  tailGroup.rotation.x = -0.35;
+  bob.add(tailGroup);
+}
+
+// a pale belly patch on the front of the torso
+function buildBellyPatch(bob, whiteYarn) {
+  const belly = new THREE.Mesh(lumpify(new THREE.SphereGeometry(0.22, 16, 12), 0.02, 16), whiteYarn);
+  belly.scale.set(0.8, 1.0, 0.45);
+  belly.position.set(0, 0.75, 0.26);
+  bob.add(belly);
+}
+
+// a flared crochet dress with a hem trim, plus a hair bow between the
+// ears — the pieces that make a character read as dressed up, not
+// just recoloured
+function buildDress(bob, skin) {
+  const dressMat = new THREE.MeshStandardMaterial({ color: skin.dressHex || skin.collarHex, roughness: 0.85 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: skin.collarHex, roughness: 0.9 });
+  const dressGeo = lumpify(new THREE.ConeGeometry(0.4, 0.5, 20, 1, true), 0.03, 12);
+  const dress = new THREE.Mesh(dressGeo, dressMat);
+  dress.position.set(0, 0.6, 0);
+  dress.castShadow = true;
+  bob.add(dress);
+  const hem = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 8, 26), trimMat);
+  hem.rotation.x = Math.PI / 2;
+  hem.position.set(0, 0.35, 0);
+  bob.add(hem);
+  const waist = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 8, 22), trimMat);
+  waist.rotation.x = Math.PI / 2;
+  waist.position.set(0, 0.85, 0);
+  bob.add(waist);
+}
+
+function buildBow(head, skin) {
+  const bowMat = new THREE.MeshStandardMaterial({ color: skin.bowHex || skin.collarHex, roughness: 0.75 });
+  const bowGroup = new THREE.Group();
+  const loopGeo = lumpify(new THREE.SphereGeometry(0.09, 14, 10), 0.02, 14);
+  for (const side of [-1, 1]) {
+    const loop = new THREE.Mesh(loopGeo, bowMat);
+    loop.position.set(0.085 * side, 0, 0);
+    loop.scale.set(1.3, 0.8, 0.5);
+    loop.rotation.z = 0.55 * side;
+    loop.castShadow = true;
+    bowGroup.add(loop);
+  }
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), bowMat);
+  bowGroup.add(knot);
+  bowGroup.position.set(0.02, 0.4, -0.06);
+  bowGroup.rotation.y = 0.3;
+  head.add(bowGroup);
+}
+
 export function createBear(skin = DEFAULT_SKIN) {
   skin = { ...DEFAULT_SKIN, ...skin };
+  const sp = SPECIES[skin.species] || SPECIES.bear;
   const root = new THREE.Group();
   // a little seed variety per character so two skins never look woven identically
   const seedOffset = Math.abs(skin.headHex.charCodeAt(1) || 0) % 20;
@@ -115,33 +238,38 @@ export function createBear(skin = DEFAULT_SKIN) {
   root.add(bob);
 
   // ---- body: a short, softly rounded torso -------------------------
-  const torsoGeo = lumpify(new THREE.SphereGeometry(0.36, 26, 20), 0.075, 11);
-  torsoGeo.scale(1.0, 1.1, 0.78);
+  const torsoGeo = lumpify(new THREE.SphereGeometry(sp.torsoR, 26, 20), 0.075, 11);
+  torsoGeo.scale(...sp.torso);
   const torso = new THREE.Mesh(torsoGeo, marledYarn);
   torso.position.y = 0.85;
   torso.castShadow = true;
   bob.add(torso);
+
+  if (sp.belly) buildBellyPatch(bob, whiteYarn);
+  if (sp.tail) buildTail(bob, marledYarn2, whiteYarn);
+  if (sp.dress) buildDress(bob, skin);
 
   // ---- head: wide, flat and white, the way it was knitted ----------
   const head = new THREE.Group();
   head.position.y = 1.42;
   bob.add(head);
 
-  const skullGeo = lumpify(new THREE.SphereGeometry(0.35, 30, 22), 0.085, 12);
-  skullGeo.scale(1.25, 0.92, 0.78);
+  const skullGeo = lumpify(new THREE.SphereGeometry(sp.headR, 30, 22), 0.085, 12);
+  skullGeo.scale(...sp.head);
   const skull = new THREE.Mesh(skullGeo, whiteYarn);
   skull.castShadow = true;
   head.add(skull);
 
-  const ears = buildEars(head, skin, marledYarn2, seedOffset);
+  const ears = buildEars(head, sp.ear, skin, marledYarn2, seedOffset);
+  if (sp.bow) buildBow(head, skin);
 
   // ---- face ---------------------------------------------------------
   // No eyes or nose: the toy's face is a plain lump of chenille,
   // and every character keeps that same clean, faceless charm.
-  const muzzleGeo = lumpify(new THREE.SphereGeometry(0.145, 18, 14), 0.035, 18);
-  muzzleGeo.scale(1.15, 0.78, 0.6);
+  const muzzleGeo = lumpify(new THREE.SphereGeometry(sp.muzzleR, 18, 14), 0.035, 18);
+  muzzleGeo.scale(...sp.muzzle);
   const muzzle = new THREE.Mesh(muzzleGeo, whiteYarn);
-  muzzle.position.set(0, -0.13, 0.2);
+  muzzle.position.set(0, -0.13, sp.muzzleZ);
   head.add(muzzle);
 
   // ---- thread tied round the neck ----------------------------------
@@ -158,27 +286,27 @@ export function createBear(skin = DEFAULT_SKIN) {
     bob.add(tail);
   }
 
-  // ---- long dangly limbs ------------------------------------------
-  const armGeo = lumpify(new THREE.SphereGeometry(0.135, 20, 16), 0.05, 14);
-  armGeo.scale(1, 2.3, 0.95);
-  const legGeo = lumpify(new THREE.SphereGeometry(0.115, 20, 16), 0.05, 15);
-  legGeo.scale(1, 2.6, 0.98);
+  // ---- limbs: dangly for most, wide flat flippers for the seal -----
+  const armGeo = lumpify(new THREE.SphereGeometry(sp.armR, 20, 16), 0.05, 14);
+  armGeo.scale(...sp.arm);
+  const legGeo = lumpify(new THREE.SphereGeometry(sp.legR, 20, 16), 0.05, 15);
+  legGeo.scale(...sp.leg);
 
-  function limb(geo, x, y, drop, mat) {
+  function limb(geo, radius, scaleY, x, y, mat) {
     const pivot = new THREE.Group();
     pivot.position.set(x, y, 0);
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = drop;
+    mesh.position.y = -radius * scaleY;
     mesh.castShadow = true;
     pivot.add(mesh);
     bob.add(pivot);
     return pivot;
   }
 
-  const armL = limb(armGeo, -0.3, 1.02, -0.31, limbYarn);
-  const armR = limb(armGeo, 0.3, 1.02, -0.31, limbYarn);
-  const legL = limb(legGeo, -0.17, 0.6, -0.3, limbYarn);
-  const legR = limb(legGeo, 0.17, 0.6, -0.3, limbYarn);
+  const armL = limb(armGeo, sp.armR, sp.arm[1], -0.3, 1.02, limbYarn);
+  const armR = limb(armGeo, sp.armR, sp.arm[1], 0.3, 1.02, limbYarn);
+  const legL = limb(legGeo, sp.legR, sp.leg[1], -0.17, 0.6, limbYarn);
+  const legR = limb(legGeo, sp.legR, sp.leg[1], 0.17, 0.6, limbYarn);
   // arms held out and down, long enough to swing clear of the body
   armL.rotation.z = -0.85;
   armR.rotation.z = 0.85;

@@ -1,8 +1,8 @@
 /* ------------------------------------------------------------------
-   The character roster. Every skin reuses the same knitted-toy build
-   (round body, long dangly limbs, pink thread collar) — only the
-   yarn colours and ear shape change, so unlocking a new friend never
-   needs new geometry, just new wool.
+   The character roster. Every skin shares one animation rig, but
+   "species" picks a genuinely different body — a bear, a bunny in a
+   crochet dress, a fox with a tail, a flippered seal — not just a
+   recolour of the same shape.
 ------------------------------------------------------------------ */
 
 export const CHARACTERS = [
@@ -10,44 +10,44 @@ export const CHARACTERS = [
     id: 'bramble',
     name: 'Bramble',
     price: 0,
-    blurb: 'The original. White head, blue marled yarn, a pink thread bow.',
+    blurb: 'The original bear. White head, blue marled yarn, a pink thread bow.',
+    species: 'bear',
     headHex: '#ffffff', headAccent: '#e8f1f7',
     bodyHex: '#4faee6', bodyAccent: '#46a5df', limbHex: '#4aa9e2',
     collarHex: '#f7a9bd',
-    earShape: 'round',
     swatch: ['#ffffff', '#4faee6'],
   },
   {
     id: 'evalina',
     name: 'Evalina',
     price: 150,
-    blurb: 'A lilac bunny with long floppy ears and a lavender ribbon.',
-    headHex: '#fffdfb', headAccent: '#f2eaf9',
-    bodyHex: '#b79ee0', bodyAccent: '#ad91da', limbHex: '#b195dc',
-    collarHex: '#dcaee8',
-    earShape: 'long',
-    swatch: ['#fffdfb', '#b79ee0'],
+    blurb: 'A pink bunny with a bow in her ears and a little crochet dress.',
+    species: 'bunny',
+    headHex: '#fffdfb', headAccent: '#fce6f0',
+    bodyHex: '#f28fb8', bodyAccent: '#ee7aa8', limbHex: '#f28fb8',
+    collarHex: '#e0559a', dressHex: '#f6a8cc', bowHex: '#e0559a',
+    swatch: ['#fffdfb', '#f28fb8'],
   },
   {
     id: 'clementine',
     name: 'Clementine',
     price: 220,
-    blurb: 'A peachy fox with pointed ears and a mint green thread.',
+    blurb: 'A peachy fox with pointed ears, a bushy tail and a cream belly.',
+    species: 'fox',
     headHex: '#fff3e8', headAccent: '#ffe1c9',
     bodyHex: '#f2a15e', bodyAccent: '#ee9750', limbHex: '#f0a563',
     collarHex: '#a8d9b0',
-    earShape: 'pointed',
     swatch: ['#fff3e8', '#f2a15e'],
   },
   {
     id: 'marina',
     name: 'Marina',
     price: 260,
-    blurb: 'A minty little seal with round flippy ears and a coral thread.',
+    blurb: 'A minty little seal with tiny ears and flippers instead of paws.',
+    species: 'seal',
     headHex: '#f4fffa', headAccent: '#dff5ec',
     bodyHex: '#7fcfb0', bodyAccent: '#6cc2a2', limbHex: '#74c8a8',
     collarHex: '#f4a68f',
-    earShape: 'round',
     swatch: ['#f4fffa', '#7fcfb0'],
   },
 ];
