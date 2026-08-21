@@ -7,7 +7,6 @@ export class Sound {
     this.musicGain = null;
     this.musicMuted = false;
     this.musicPlaying = false;
-    this.padOscs = null;
   }
 
   enable() {
@@ -25,7 +24,7 @@ export class Sound {
 
     // background music sits on its own gain so a mute toggle never touches sfx
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = this.musicMuted ? 0 : 0.15;
+    this.musicGain.gain.value = this.musicMuted ? 0 : 0.17;
     this.musicGain.connect(soften);
   }
 
@@ -68,12 +67,13 @@ export class Sound {
     });
   }
 
-  /* ---------------- chill background music ----------------
-     A soft drifting pad that slowly shifts between three open
-     chords, plus a sparse pentatonic pluck melody so it never
-     hits a "wrong" note. Everything generated, nothing loaded. */
+  /* ---------------- bouncy background music ----------------
+     A genuine little 4-bar tune on a loop, not a drone: a plucked
+     bassline anchoring each chord, a whimsical marimba-ish melody
+     riff, and a soft shaker for a bit of groove. Everything here
+     is synthesized live — no audio files anywhere in this game. */
 
-  musicNote(freq, { dur = 1.4, type = 'sine', gain = 0.14, delay = 0, pan = 0, attack = 0.08 } = {}) {
+  musicNote(freq, { dur = 0.5, type = 'sine', gain = 0.14, delay = 0, pan = 0, attack = 0.01 } = {}) {
     if (!this.ctx || !this.musicGain) return;
     const t = this.ctx.currentTime + delay;
     const osc = this.ctx.createOscillator();
@@ -96,87 +96,92 @@ export class Sound {
     osc.stop(t + dur + 0.15);
   }
 
-  startPad() {
-    const padGain = this.ctx.createGain();
-    padGain.gain.value = 1;
-    padGain.connect(this.musicGain);
-    const chord = [130.81, 196.0, 329.63]; // a soft open C3-G3-E4
-    this.padOscs = chord.map((f, i) => {
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      const g = this.ctx.createGain();
-      g.gain.value = 0.3 - i * 0.06;
-      osc.connect(g);
-      g.connect(padGain);
-      osc.start();
-      return { osc, gainNode: g };
-    });
-    this.padGain = padGain;
-    this.padChordIndex = 0;
-    this.scheduleChordChange();
+  musicShaker(delay = 0, gain = 0.05) {
+    if (!this.ctx || !this.musicGain || !this.noiseBuffer) return;
+    const t = this.ctx.currentTime + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    const band = this.ctx.createBiquadFilter();
+    band.type = 'highpass';
+    band.frequency.value = 4500;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    src.connect(band);
+    band.connect(g);
+    g.connect(this.musicGain);
+    src.start(t);
+    src.stop(t + 0.09);
   }
 
-  scheduleChordChange() {
-    const chords = [
-      [130.81, 196.0, 329.63],  // C3 G3 E4 — home
-      [110.0, 164.81, 220.0],   // A2 E3 A3 — a gentle dip
-      [146.83, 220.0, 349.23],  // D3 A3 F4 — a soft lift
-    ];
-    const next = () => {
-      if (!this.padOscs) return;
-      this.padChordIndex = (this.padChordIndex + 1) % chords.length;
-      const target = chords[this.padChordIndex];
-      const now = this.ctx.currentTime;
-      this.padOscs.forEach((p, i) => {
-        p.osc.frequency.cancelScheduledValues(now);
-        p.osc.frequency.setValueAtTime(p.osc.frequency.value, now);
-        p.osc.frequency.exponentialRampToValueAtTime(target[i], now + 4);
-      });
-      this.musicChordTimer = setTimeout(next, 11000 + Math.random() * 3000);
-    };
-    this.musicChordTimer = setTimeout(next, 9000 + Math.random() * 3000);
-  }
-
-  scheduleMelody() {
-    // pentatonic — every note in this scale sits happily over every chord above
-    const scale = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
-    const playNext = () => {
-      if (!this.musicPlaying) return;
-      const freq = scale[Math.floor(Math.random() * scale.length)] * (Math.random() < 0.82 ? 1 : 2);
-      const pan = Math.random() * 1.3 - 0.65;
-      this.musicNote(freq, { dur: 1.1 + Math.random() * 0.9, gain: 0.075 + Math.random() * 0.035, pan, attack: 0.1 });
-      if (Math.random() < 0.16) {
-        // an occasional soft bell an octave up, for a little sparkle
-        this.musicNote(freq * 2, { dur: 2.0, gain: 0.045, delay: 0.35, pan: -pan, attack: 0.5 });
-      }
-      this.musicMelodyTimer = setTimeout(playNext, 1500 + Math.random() * 1500);
-    };
-    this.musicMelodyTimer = setTimeout(playNext, 1200);
+  // a quick, soft chord stab — a chime confirming the harmony, never
+  // sustained, so it can never read as a drone
+  musicChordStab(freqs, delay = 0) {
+    freqs.forEach((f, i) => this.musicNote(f, { dur: 0.7, type: 'sine', gain: 0.045, delay, pan: (i - 1) * 0.25, attack: 0.02 }));
   }
 
   startMusic() {
     if (!this.ctx || this.musicPlaying) return;
     this.musicPlaying = true;
-    this.startPad();
-    this.scheduleMelody();
+
+    if (!this.noiseBuffer) {
+      const len = this.ctx.sampleRate * 0.1;
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      this.noiseBuffer = buf;
+    }
+
+    const TEMPO = 112;
+    const STEP = 60 / TEMPO / 2; // eighth notes
+
+    // four bars: C — Am — F — G, a classic, cheerful little loop
+    const chords = [
+      [261.63, 329.63, 392.0],  // C E G
+      [220.0, 261.63, 329.63],  // A C E
+      [174.61, 220.0, 261.63],  // F A C
+      [196.0, 246.94, 293.66],  // G B D
+    ];
+    const bassRoots = [130.81, 220.0, 174.61, 196.0]; // C3 A3 F3 G3
+
+    // one bouncy 4-bar melody riff (8 eighth-note steps per bar), with
+    // rests written in as null — this is the "tune" that makes it fun
+    const melody = [
+      [329.63, 392.0, 329.63, 523.25, null, 392.0, 329.63, 293.66],   // over C
+      [440.0, 523.25, 440.0, 329.63, null, 523.25, 440.0, 392.0],     // over Am
+      [349.23, 440.0, 523.25, 440.0, null, 349.23, 440.0, 392.0],     // over F
+      [392.0, 493.88, 587.33, 493.88, null, 392.0, 587.33, null],     // over G, resolves back home
+    ];
+
+    let bar = 0, step = 0;
+    const playStep = () => {
+      if (!this.musicPlaying) return;
+      if (step === 0) this.musicChordStab(chords[bar]);
+      if (step === 0 || step === 4) {
+        this.musicNote(bassRoots[bar], { dur: 0.34, type: 'triangle', gain: 0.16, attack: 0.006 });
+      }
+      const note = melody[bar][step];
+      if (note) {
+        const pan = step % 2 === 0 ? -0.25 : 0.25;
+        this.musicNote(note, { dur: 0.3, type: 'sine', gain: 0.1, pan, attack: 0.008 });
+      }
+      if (step % 2 === 1) this.musicShaker(0, 0.045);
+
+      step++;
+      if (step >= 8) { step = 0; bar = (bar + 1) % chords.length; }
+      this.musicStepTimer = setTimeout(playStep, STEP * 1000);
+    };
+    playStep();
   }
 
   stopMusic() {
     this.musicPlaying = false;
-    clearTimeout(this.musicChordTimer);
-    clearTimeout(this.musicMelodyTimer);
-    if (this.padOscs && this.ctx) {
-      const now = this.ctx.currentTime;
-      const oscs = this.padOscs;
-      oscs.forEach((p) => p.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1));
-      setTimeout(() => oscs.forEach((p) => { try { p.osc.stop(); } catch {} }), 1200);
-      this.padOscs = null;
-    }
+    clearTimeout(this.musicStepTimer);
   }
 
   setMusicMuted(muted) {
     this.musicMuted = muted;
-    if (this.musicGain) this.musicGain.gain.value = muted ? 0 : 0.15;
+    if (this.musicGain) this.musicGain.gain.value = muted ? 0 : 0.17;
   }
 }

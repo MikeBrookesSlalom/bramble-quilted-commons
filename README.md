@@ -22,8 +22,9 @@ Standing still for a couple of seconds sets off a little gesture — a
 curious look around, a big stretch, a happy wiggle — and any input
 snaps straight back to normal. Double-jump (flutter) now hangs in the
 air for a moment before gravity takes back over, useful for lining up
-a tricky landing. A soft, generative ambient soundtrack plays in the
-background (🎵 button to mute) — nothing is a sound file, it's all
+a tricky landing. A bouncy little generative soundtrack — a plucked bassline, a
+whimsical repeating melody riff and a soft shaker — plays in the
+background (🎵 button to mute). Nothing is a sound file, it's all
 synthesized live.
 
 ## Playing
