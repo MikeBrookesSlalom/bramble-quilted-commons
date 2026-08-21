@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { World } from './level.js';
 import { createBear, animateBear, bearLandSquash } from './bear.js';
+import { findCharacter } from './characters.js';
+import { getSelected, addCurrency } from './progress.js';
 import { skyTexture } from './textures.js';
 import { Particles } from './particles.js';
 import { Sound } from './sound.js';
@@ -9,6 +11,8 @@ const GRAVITY = 30;
 const FALL_GRAVITY = 46;
 const JUMP_V = 13.2;
 const FLUTTER_V = 10.6;
+const HOVER_GRAVITY = 8;   // gentle sink while the flutter hover is active
+const HOVER_TIME = 0.95;   // seconds of hover after a flutter
 const MAX_SPEED = 7.2;
 const ACCEL_GROUND = 52;
 const ACCEL_AIR = 26;
@@ -50,7 +54,7 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.sound = new Sound();
 
-    this.bear = createBear();
+    this.bear = createBear(findCharacter(getSelected()));
     this.scene.add(this.bear);
 
     this.pos = new THREE.Vector3(0, 0.2, 6);
@@ -62,6 +66,9 @@ export class Game {
     this.jumpBuffer = 0;
     this.canFlutter = true;
     this.cutJump = false;
+    this.flutterTimer = 0;
+    this.idleTimer = 0;
+    this.hasMoveInput = false;
     this.respawnPos = this.pos.clone();
     this.collected = 0;
     this.won = false;
@@ -264,6 +271,7 @@ export class Game {
         this.groundCol = null;
         this.canFlutter = true;
         this.cutJump = false;
+        this.flutterTimer = 0;
         this.particles.puff(p.clone(), 22, 0xffd9e6, 3.2);
         this.sound.boing();
         if (col.padCoil) col.padCoil.userData.squish = 1;
@@ -275,6 +283,7 @@ export class Game {
       this.groundCol = col;
       this.coyote = 0.12;
       this.canFlutter = true;
+      this.flutterTimer = 0;
     } else {
       this.grounded = false;
       this.groundCol = null;
@@ -306,6 +315,13 @@ export class Game {
     this.particles.update(dt);
 
     const speed = Math.hypot(this.vel.x, this.vel.z);
+    // idle emotes kick in once the bear has stood still, untouched, for a
+    // couple of seconds — any input at all snaps it straight back to normal
+    if (this.grounded && !this.hasMoveInput && this.jumpBuffer <= 0 && speed < 0.2) {
+      this.idleTimer += dt;
+    } else {
+      this.idleTimer = 0;
+    }
     this.bear.position.copy(this.pos);
     if (speed > 0.4) {
       const target = Math.atan2(this.vel.x, this.vel.z);
@@ -315,7 +331,7 @@ export class Game {
       this.facing += diff * Math.min(1, dt * 12);
     }
     this.bear.rotation.y = this.facing;
-    animateBear(this.bear, dt, { speed, grounded: this.grounded, vy: this.vel.y, time: this.time });
+    animateBear(this.bear, dt, { speed, grounded: this.grounded, vy: this.vel.y, time: this.time, idleTimer: this.idleTimer, hovering: this.flutterTimer > 0 });
 
     if (this.pos.y < this.respawnPos.y - 30 || this.pos.y < -20) this.respawn();
 
@@ -336,6 +352,7 @@ export class Game {
     if (k.has('KeyD') || k.has('ArrowRight')) ix += 1;
     ix += this.touchAxis.x;
     iz += this.touchAxis.z;
+    this.hasMoveInput = Math.abs(ix) > 0.01 || Math.abs(iz) > 0.01;
 
     // movement is relative to wherever the camera is looking
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
@@ -382,6 +399,7 @@ export class Game {
         this.canFlutter = false;
         this.jumpBuffer = 0;
         this.cutJump = true;
+        this.flutterTimer = HOVER_TIME;
         this.particles.puff(this.pos.clone(), 14, 0xd9f0ff, 1.8);
         this.sound.flutter();
       }
@@ -389,7 +407,14 @@ export class Game {
     // shorter hop if the key is let go early (springs are exempt)
     if (this.cutJump && !this.keys.has('Space') && this.vel.y > 4) this.vel.y -= 16 * dt;
 
-    this.vel.y -= (this.vel.y > 0 ? GRAVITY : FALL_GRAVITY) * dt;
+    // the flutter hangs in the air for a moment on gentle gravity before
+    // dropping normally — a little breathing room for a tricky landing
+    if (this.flutterTimer > 0) {
+      this.flutterTimer = Math.max(0, this.flutterTimer - dt);
+      this.vel.y -= HOVER_GRAVITY * dt;
+    } else {
+      this.vel.y -= (this.vel.y > 0 ? GRAVITY : FALL_GRAVITY) * dt;
+    }
     this.vel.y = Math.max(this.vel.y, -42);
 
     // integrate in small steps so nothing tunnels through a platform
@@ -445,10 +470,35 @@ export class Game {
       goal.reached = true;
       this.won = true;
       this.winTime = this.time;
+      const earned = 20 + this.collected * 5;
+      const totalCurrency = addCurrency(earned);
       this.particles.confetti(goal.pos.clone(), 220);
       this.sound.fanfare();
-      this.ui.win(this.collected, this.world.buttons.length);
+      this.ui.win(this.collected, this.world.buttons.length, earned, totalCurrency);
     }
+  }
+
+  // swap the worn character in place — used by the shop, mid-run or not
+  setSkin(skinId) {
+    const skin = findCharacter(skinId);
+    const pos = this.pos.clone();
+    const facing = this.facing;
+    this.scene.remove(this.bear);
+    this.bear.traverse((node) => {
+      if (node.geometry) node.geometry.dispose();
+      if (node.material) {
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((m) => {
+          m.map?.dispose();
+          m.bumpMap?.dispose();
+          m.dispose();
+        });
+      }
+    });
+    this.bear = createBear(skin);
+    this.bear.position.copy(pos);
+    this.bear.rotation.y = facing;
+    this.scene.add(this.bear);
   }
 
   updateProps(dt) {
@@ -511,6 +561,7 @@ export class Game {
     this.vel.set(0, 0, 0);
     this.grounded = false;
     this.canFlutter = true;
+    this.flutterTimer = 0;
     this.camPos.copy(this.pos).add(new THREE.Vector3(0, 3, 8));
     this.sound.respawn();
   }

@@ -13,6 +13,19 @@ sewing needle for a bridge, and a giant felt flower at the summit.
 
 There are no enemies and nothing to lose — just a world to climb and explore.
 
+Finish a run and you earn spools of thread — spend them in the Yarn Shop
+(the 👗 button) to unlock new knitted friends, including a lilac bunny
+named **Evalina**, a peachy fox named Clementine, and a minty seal named
+Marina. Whoever you're wearing remembers itself between sessions.
+
+Standing still for a couple of seconds sets off a little gesture — a
+curious look around, a big stretch, a happy wiggle — and any input
+snaps straight back to normal. Double-jump (flutter) now hangs in the
+air for a moment before gravity takes back over, useful for lining up
+a tricky landing. A soft, generative ambient soundtrack plays in the
+background (🎵 button to mute) — nothing is a sound file, it's all
+synthesized live.
+
 ## Playing
 
 Double-click **`Play Bramble.command`**, and the game opens in your browser.
@@ -59,11 +72,13 @@ works with no internet connection). No build step, no dependencies to install.
 | file | what it does |
 |---|---|
 | `src/textures.js` | paints every fabric — knit stitches, felt, weave, patchwork, wound thread — onto 2D canvases at load time |
-| `src/bear.js` | builds Bramble out of lumpy knitted spheres and capsules, and animates him |
+| `src/bear.js` | builds the knitted character out of lumpy spheres, parameterized by a "skin" (colours + ear shape), and animates it — walking, jumping, hovering, idle gestures |
+| `src/characters.js` | the roster: Bramble, Evalina, Clementine, Marina — each just a set of yarn colours and an ear shape |
+| `src/progress.js` | localStorage-backed currency, unlocks and the selected character |
 | `src/level.js` | the world: platforms, props, collectibles and checkpoints |
 | `src/game.js` | movement, collision, camera, and the game loop |
 | `src/particles.js` | puffs of lint, sparkles and confetti scraps |
-| `src/sound.js` | a small soft synth for hops, boings and the fanfare |
+| `src/sound.js` | a small soft synth for hops, boings, the fanfare, and a generative ambient soundtrack |
 
 Platforms are deliberately **one-way**: you sail up through them and land on
 top, so a mistimed jump never bonks you on the head — it keeps the climb

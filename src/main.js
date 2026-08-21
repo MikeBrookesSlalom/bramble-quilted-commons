@@ -1,4 +1,6 @@
 import { Game } from './game.js';
+import { CHARACTERS, findCharacter } from './characters.js';
+import { getCurrency, getUnlocked, getSelected, setSelected, unlock, spendCurrency } from './progress.js';
 
 const ui = {
   total: 0,
@@ -25,12 +27,16 @@ const ui = {
     setTimeout(() => { this.hintEl.style.opacity = '0'; }, 7000);
   },
 
-  win(collected, total) {
+  win(collected, total, earned, totalCurrency) {
+    const name = findCharacter(getSelected()).name;
+    document.getElementById('winline').textContent = `${name} sits at the very top of the Quilted Commons.`;
     document.getElementById('wincount').textContent =
       collected >= total
         ? `And every single button — all ${total} of them. Perfect stitching!`
         : `You gathered ${collected} of ${total} buttons along the way.`;
+    document.getElementById('winearned').textContent = `You earned ${earned} 🧵 spools — ${totalCurrency} saved up.`;
     this.winEl.classList.add('show');
+    renderCurrencyBadge();
   },
 };
 
@@ -41,13 +47,102 @@ game.loop();
 // handy for tinkering from the console: game.pos.set(x, y, z)
 window.game = game;
 
+/* ---------------- currency + character shop ---------------- */
+
+const currencyBadge = document.getElementById('currencyBadge');
+function renderCurrencyBadge() { currencyBadge.textContent = `🧵 ${getCurrency()}`; }
+renderCurrencyBadge();
+
+const shopEl = document.getElementById('shop');
+const shopGrid = document.getElementById('shopGrid');
+
+function renderShop() {
+  const unlocked = getUnlocked();
+  const selected = getSelected();
+  const currency = getCurrency();
+  document.getElementById('shopCurrency').textContent = `🧵 ${currency} spools saved`;
+
+  shopGrid.innerHTML = '';
+  CHARACTERS.forEach((c) => {
+    const owned = unlocked.includes(c.id);
+    const isSelected = selected === c.id;
+    const card = document.createElement('div');
+    card.className = 'charCard' + (isSelected ? ' selected' : '');
+
+    const swatch = document.createElement('div');
+    swatch.className = 'charSwatch';
+    swatch.style.background = `linear-gradient(135deg, ${c.swatch[0]}, ${c.swatch[1]})`;
+    card.appendChild(swatch);
+
+    const name = document.createElement('div');
+    name.className = 'charName';
+    name.textContent = c.name;
+    card.appendChild(name);
+
+    const blurb = document.createElement('div');
+    blurb.className = 'charBlurb';
+    blurb.textContent = c.blurb;
+    card.appendChild(blurb);
+
+    const btn = document.createElement('button');
+    btn.className = 'charBtn';
+    if (isSelected) {
+      btn.textContent = 'Selected';
+      btn.disabled = true;
+    } else if (owned) {
+      btn.textContent = 'Wear';
+      btn.addEventListener('click', () => {
+        setSelected(c.id);
+        game.setSkin(c.id);
+        renderShop();
+      });
+    } else {
+      btn.textContent = c.price === 0 ? 'Unlock' : `Unlock — 🧵 ${c.price}`;
+      btn.disabled = currency < c.price;
+      btn.addEventListener('click', () => {
+        if (getCurrency() < c.price) return;
+        spendCurrency(c.price);
+        unlock(c.id);
+        setSelected(c.id);
+        game.setSkin(c.id);
+        renderCurrencyBadge();
+        renderShop();
+      });
+    }
+    card.appendChild(btn);
+    shopGrid.appendChild(card);
+  });
+}
+
+function openShop() { renderShop(); shopEl.classList.add('show'); }
+function closeShop() { shopEl.classList.remove('show'); }
+document.getElementById('shopBtn').addEventListener('click', openShop);
+document.getElementById('titleShopBtn').addEventListener('click', openShop);
+document.getElementById('winShopBtn').addEventListener('click', openShop);
+document.getElementById('shopClose').addEventListener('click', closeShop);
+
 const titleEl = document.getElementById('title');
 document.getElementById('play').addEventListener('click', () => {
   titleEl.style.opacity = '0';
   setTimeout(() => { titleEl.style.display = 'none'; }, 600);
   game.start();
+  if (!musicMuted) game.sound.startMusic();
   ui.hideHintOnce();
   canvas.focus();
+});
+
+/* ---------------- music mute toggle ---------------- */
+
+let musicMuted = localStorage.getItem('stitchbear_music_muted') === '1';
+const muteBtn = document.getElementById('muteBtn');
+function renderMuteBtn() { muteBtn.textContent = musicMuted ? '🔇' : '🎵'; }
+renderMuteBtn();
+muteBtn.addEventListener('click', () => {
+  musicMuted = !musicMuted;
+  localStorage.setItem('stitchbear_music_muted', musicMuted ? '1' : '0');
+  game.sound.setMusicMuted(musicMuted);
+  if (!musicMuted && game.started) game.sound.startMusic();
+  renderMuteBtn();
 });
 
 document.getElementById('keepgoing').addEventListener('click', () => {

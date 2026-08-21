@@ -354,11 +354,13 @@ export class World {
       this.grassTuft(Math.cos(a) * r, 0, 4 + Math.sin(a) * r);
     }
 
-    // welcome arch: a giant embroidery hoop you walk through
-    this.embroideryHoop(0, 5.5, -3.4, 4.6);
+    // welcome hoop: a landmark off to the side, not a gate across the
+    // path — spawn looks straight down -z at the first jump, so nothing
+    // stands on that sightline
+    this.embroideryHoop(-7.2, 5.5, 1.5, 4.0, Math.PI * 0.32);
     for (const side of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 5.6, 10), M.wood);
-      post.position.set(side * 4.3, 2.8, -3.4);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 5, 10), M.wood);
+      post.position.set(-7.2 + Math.cos(Math.PI * 0.32) * side * 3.75, 2.5, 1.5 + Math.sin(Math.PI * 0.32) * side * 3.75);
       this.group.add(post);
     }
 
@@ -394,6 +396,8 @@ export class World {
 
     const btnMats = [M.feltPink, M.feltButter, M.feltMint, M.feltLilac];
     const stepDefs = [
+      [1.2, 0.4, -0.3, 1.9, 5.0],
+      [-1.0, 0.8, -4.7, 1.9, 5.8],
       [0, 1.2, -9.0, 1.9, 0.0],
       [2.4, 2.3, -13.2, 1.8, 1.0],
       [-0.6, 3.4, -17.0, 1.8, 2.0],
@@ -406,6 +410,7 @@ export class World {
         thread: [M.pinkYarn, M.pinkYarn, M.pinkYarn][0],
       });
     });
+    this.addCollectible(-1.0, 1.6, -4.7);
     this.addCollectible(2.4, 3.9, -13.2);
     this.addCollectible(-0.6, 5.0, -17.0);
     this.addCollectible(-8.5, 1.6, 4);
@@ -428,8 +433,10 @@ export class World {
 
     /* --- 4. ribbon sliders --- */
     const ribbonDefs = [
+      [6.4, -34.25, 3.6, 4.2, M.threadPink],
       [7.0, -37.5, 3.6, 0.0, M.threadPink],
       [8.3, -42.3, 3.6, 0.8, M.threadMint],
+      [8.95, -44.6, 3.0, 1.2, M.threadLilac],
       [9.6, -46.9, 3.2, 1.6, M.threadButter],
       [10.9, -51.6, 2.8, 2.4, M.threadLilac],
     ];
@@ -444,7 +451,9 @@ export class World {
         col.mesh.add(bar);
       }
     });
+    this.addCollectible(0, 8.4, -34.25);
     this.addCollectible(0, 9.0, -42.3);
+    this.addCollectible(0, 10.35, -44.6);
     // long ribbons streaming through the gap, just for the look of it
     for (let i = 0; i < 5; i++) {
       const curve = new THREE.CatmullRomCurve3([
@@ -566,6 +575,7 @@ export class World {
       [-3.0, 30.2, -85.0, 1.9, M.knitPeach, 0.0],
       [1.0, 31.5, -87.5, 1.9, M.knitMint, 1.5],
       [-1.6, 32.8, -90.2, 1.9, M.knitBlue, 3.0],
+      [-0.8, 33.6, -93.1, 1.9, M.knitPeach, 4.4],
     ];
     ballDefs.forEach(([x, y, z, r, mat, ph]) => {
       const col = this.addCyl(x, y, z, r * 0.8, 2.2, mat, {
@@ -592,6 +602,7 @@ export class World {
       holder.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.06, 5), mat));
     });
     this.addCollectible(1.0, 32.9, -87.5);
+    this.addCollectible(-0.8, 35.0, -93.1);
 
     /* --- 9. the needle bridge --- */
     const needle = new THREE.Group();

@@ -140,6 +140,62 @@
     font-size: 19px; line-height: 1;
   }
   #respawnBtn:active { transform: translateY(2px); }
+  #muteBtn {
+    pointer-events: auto; cursor: pointer;
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; line-height: 1;
+  }
+  #muteBtn:active { transform: translateY(2px); }
+
+  #currencyBadge {
+    pointer-events: auto; padding: 10px 16px; font-size: 16px; font-weight: bold; color: #c9973e;
+  }
+  #shopBtn {
+    pointer-events: auto; cursor: pointer;
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; line-height: 1;
+  }
+  #shopBtn:active { transform: translateY(2px); }
+
+  /* ---------- the yarn shop ---------- */
+  #shop {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,.3), rgba(150,185,205,.5));
+  }
+  #shop.show { display: flex; pointer-events: auto; }
+  .shopCard {
+    padding: 30px 36px; text-align: center; max-width: min(680px, 92vw);
+    max-height: 86vh; overflow-y: auto; pointer-events: auto;
+  }
+  .shopGrid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px; margin-top: 18px;
+  }
+  .charCard {
+    background: #fffaf0; border: 2px solid var(--cloth-edge); border-radius: 14px;
+    padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .charCard.selected { border-color: var(--thread); box-shadow: 0 0 0 3px rgba(242,143,168,.28); }
+  .charSwatch {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid #fff; box-shadow: 0 3px 8px rgba(80,60,40,.2);
+  }
+  .charName { font-size: 16px; font-weight: bold; color: var(--ink); }
+  .charBlurb { font-size: 12px; opacity: .75; line-height: 1.35; min-height: 34px; }
+  .charBtn {
+    pointer-events: auto; cursor: pointer; margin-top: 4px;
+    font-family: inherit; font-size: 13px; color: #fff;
+    background: linear-gradient(#f5a3b8, var(--thread));
+    border: none; border-radius: 999px; padding: 7px 16px;
+    box-shadow: 0 3px 0 #d0728c;
+  }
+  .charBtn:disabled {
+    background: #e4dccb; color: #a89a7d; box-shadow: 0 3px 0 #cabfa6; cursor: default;
+  }
+  .charBtn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
 
   /* ---------- on-screen touch controls (iPad / phone) ---------- */
   #touchControls { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 6; }
@@ -193,7 +249,10 @@
 <div id="ui">
   <div id="hud">
     <div id="buttons" class="patch"><span class="pip"></span><span id="count">0 / 0</span> buttons</div>
+    <div id="currencyBadge" class="patch" title="Spools earned">🧵 0</div>
+    <div id="shopBtn" class="patch" title="Change character">👗</div>
     <div id="respawnBtn" class="patch" title="Back to the last thimble">↺</div>
+    <div id="muteBtn" class="patch" title="Music on/off">🎵</div>
   </div>
 
   <div id="toast" class="patch"></div>
@@ -215,8 +274,12 @@
       <h2>You found the Golden Thimble!</h2>
       <p id="winline">Bramble sits at the very top of the Quilted Commons.</p>
       <p id="wincount"></p>
+      <p id="winearned" style="color:#c9973e; font-weight:bold;"></p>
       <p style="opacity:.75; font-size:15px; margin-top:14px">The world stays open — go and explore the rest.</p>
-      <button id="keepgoing" class="again" style="pointer-events:auto; cursor:pointer; margin-top:16px; font-family:inherit; font-size:17px; color:#fff; background:linear-gradient(#8ec9a9,#6fb894); border:none; border-radius:999px; padding:11px 30px; box-shadow:0 5px 0 #55977a;">Keep exploring</button>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:16px;">
+        <button id="keepgoing" class="again" style="pointer-events:auto; cursor:pointer; font-family:inherit; font-size:17px; color:#fff; background:linear-gradient(#8ec9a9,#6fb894); border:none; border-radius:999px; padding:11px 30px; box-shadow:0 5px 0 #55977a;">Keep exploring</button>
+        <button id="winShopBtn" class="again" style="pointer-events:auto; cursor:pointer; font-family:inherit; font-size:17px; color:#fff; background:linear-gradient(#f5a3b8, var(--thread)); border:none; border-radius:999px; padding:11px 30px; box-shadow:0 5px 0 #d0728c;">👗 Spend spools</button>
+      </div>
     </div>
   </div>
 
@@ -237,7 +300,20 @@
         <span>pinch: zoom</span>
         <span>⤴ button: jump &amp; double-jump</span>
       </div>
-      <button id="play">Let's go!</button>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button id="play">Let's go!</button>
+        <button id="titleShopBtn" style="pointer-events:auto; cursor:pointer; font-family:inherit; font-size:16px; color:#8a6a3a; background:#fff3de; border:2px solid var(--cloth-edge); border-radius:999px; padding:12px 26px;">👗 Characters</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shop">
+    <div class="card patch shopCard">
+      <div style="font-size:14px; letter-spacing:.14em; opacity:.6">THE YARN SHOP</div>
+      <h2>Pick your knitted friend</h2>
+      <p id="shopCurrency" style="font-weight:bold; color:#c9973e;"></p>
+      <div id="shopGrid" class="shopGrid"></div>
+      <button id="shopClose" style="pointer-events:auto; cursor:pointer; margin-top:18px; font-family:inherit; font-size:16px; color:#fff; background:linear-gradient(#8ec9a9,#6fb894); border:none; border-radius:999px; padding:10px 28px; box-shadow:0 5px 0 #55977a;">Close</button>
     </div>
   </div>
 </div>
